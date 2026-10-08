@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Device Details - AKIJ Resource</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0f1420; --card:#1a2233; --line:#2a3547; --txt:#e6edf7; --mut:#8fa1bd; --ok:#2ecc71; --off:#e74c3c; --acc:#4a8fe0; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--txt); font-family:'Segoe UI',Arial,sans-serif; padding:20px; }
+  .top { display:flex; align-items:center; gap:14px; margin-bottom:20px; flex-wrap:wrap; }
+  .back { color:var(--acc); text-decoration:none; font-size:15px; font-weight:600; background:var(--card); border:1px solid var(--line); padding:8px 14px; border-radius:8px; }
+  .back:hover { border-color:var(--acc); }
+  .title { font-size:22px; font-weight:600; }
+  .sub { font-size:13px; color:var(--mut); margin-top:4px; }
+  .status { display:inline-block; padding:5px 12px; border-radius:6px; font-size:12px; font-weight:700; }
+  .status.on { background:rgba(46,204,113,.15); color:var(--ok); border:1px solid var(--ok); }
+  .status.off { background:rgba(231,76,60,.15); color:var(--off); border:1px solid var(--off); }
+  .meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; margin-bottom:20px; }
+  .meta .item .lbl { font-size:11px; color:var(--mut); margin-bottom:4px; }
+  .meta .item .val { font-size:15px; font-family:Consolas,monospace; }
+  h3 { font-size:16px; margin:0 0 10px; color:var(--acc); }
+  .ifwrap { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--mut); font-weight:600; }
+  tr:last-child td { border-bottom:none; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; }
+  .dot.up { background:var(--ok); }
+  .dot.down { background:var(--off); }
+  .noface { color:var(--off); font-size:14px; }
+  .warn { color:var(--off); font-size:14px; }
+  .camsummary { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .camchip { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 14px; font-size:13px; }
+  .camchip b { font-size:16px; }
+  .camchip.on b { color:var(--ok); }
+  .camchip.off b { color:var(--off); }
+  .camchip.filterable { cursor:pointer; user-select:none; transition:border-color .15s, background .15s; }
+  .camchip.filterable:hover { border-color:var(--acc); }
+  .camchip.filterable.active { border-color:var(--acc); background:rgba(74,143,224,.15); box-shadow:0 0 0 1px var(--acc) inset; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:12px; margin-bottom:16px; }
+  .tile { background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .tile .tlbl { font-size:11px; color:var(--mut); text-transform:uppercase; letter-spacing:.5px; }
+  .tile .tnum { font-size:26px; font-weight:700; margin-top:6px; color:var(--txt); }
+  .tile.on .tnum { color:var(--ok); }
+  .tile.off .tnum { color:var(--off); }
+  .tile.clickable { cursor:pointer; user-select:none; transition:border-color .15s, background .15s; }
+  .tile.clickable:hover { border-color:var(--acc); }
+  .tile.clickable.active { border-color:var(--acc); background:rgba(74,143,224,.14); box-shadow:0 0 0 1px var(--acc) inset; }
+  .actbtn { background:transparent; border:1px solid var(--line); color:var(--mut); width:28px; height:28px; border-radius:6px; cursor:pointer; margin-left:6px; font-size:13px; line-height:1; }
+  .actbtn:hover { border-color:var(--acc); color:var(--acc); }
+  .actbtn.del:hover { border-color:var(--off); color:var(--off); }
+  .actbtn.restore:hover { border-color:var(--ok); color:var(--ok); }
+  tr.hiddenrow td { opacity:.45; }
+  .linkbtn { background:transparent; border:none; color:var(--acc); cursor:pointer; font-size:12px; padding:0; text-decoration:underline; }
+  .camdot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+  .camdot.on { background:var(--ok); }
+  .camdot.off { background:var(--off); }
+  .camdot.unk { background:var(--warn); }
+  .camscroll { max-height:420px; overflow-y:auto; border:1px solid var(--line); border-radius:8px; }
+  canvas { width:100% !important; height:220px !important; }
+  .tbtn { background:var(--bg); border:1px solid var(--line); color:var(--mut); padding:6px 14px; border-radius:6px; font-size:12px; cursor:pointer; }
+  .tbtn.on { background:var(--acc); color:#fff; border-color:var(--acc); }
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="back" href="/">&larr; Back to Dashboard</a>
+  <div>
+    <div class="title" id="name">Loading...</div>
+    <div class="sub" id="sub"></div>
+  </div>
+  <div style="margin-left:auto"><span class="status" id="status">--</span></div>
+</div>
+
+<div class="meta" id="meta"></div>
+<div class="ifwrap" id="histWrap">
+  <h3>Traffic History (per Interface)</h3>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; align-items:center;">
+    <select id="selIface" style="background:var(--bg);border:1px solid var(--line);color:var(--txt);padding:7px 10px;border-radius:6px;font-size:13px;"></select>
+    <span id="timeBtns">
+      <button class="tbtn" data-s="3600">1H</button>
+      <button class="tbtn" data-s="21600">6H</button>
+      <button class="tbtn" data-s="43200">12H</button>
+      <button class="tbtn on" data-s="86400">24H</button>
+    </span>
+  </div>
+  <canvas id="chHist" height="300" style="width:100% !important; height:300px !important;"></canvas>
+</div>
+
+<div class="ifwrap" style="margin-top:20px" id="ifaceWrap">
+  <h3>Interfaces (current)</h3>
+  <div id="ifaceTable"></div>
+</div>
+
+<div class="ifwrap" style="margin-top:20px" id="sysWrap">
+  <h3>CPU &amp; Memory</h3>
+  <div id="cpuNa" class="noface" style="display:none">CPU/Memory data not available for this device via SNMP.</div>
+  <canvas id="chCpu" height="140"></canvas>
+</div>
+
+<div class="ifwrap" style="margin-top:20px; display:none" id="camWrap">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:14px">
+    <h3 style="margin:0">Connected Cameras</h3>
+    <div id="camUpdated" style="font-size:12px; color:var(--mut)"></div>
+  </div>
+  <div id="camSummary" class="camsummary"></div>
+  <div id="camTools" style="margin:-4px 0 12px"></div>
+  <div id="camTable"></div>
+</div>
+
+<div style="text-align:center; color:var(--mut); font-size:12px; margin-top:20px">Auto-refresh every 10s</div>
+
+<script>
+const q = new URLSearchParams(location.search);
+const id = q.get('id');
+const esc = s => String(s == null ? '--' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let chTraffic=null, chCpu=null, chHist=null;
+function fmt(t){ return t==null||t==='--'?'--':String(t); }
+function fmtBps(n){ if(n==null||isNaN(n))return '--'; if(n>=1e9)return(n/1e9).toFixed(2)+' Gbps'; if(n>=1e6)return(n/1e6).toFixed(2)+' Mbps'; if(n>=1e3)return(n/1e3).toFixed(1)+' Kbps'; return n.toFixed(0)+' bps'; }
+function timeLabels(hist){ return hist.map(h=>new Date(h.t).toLocaleTimeString()); }
+async function load(){
+  try {
+    const res = await fetch('/api/data');
+    if (res.status === 401) { window.location.href = '/login'; return; }
+    const d = await res.json();
+    const r = d.routers.find(x=>x.id===id);
+    if (!r){ document.getElementById('name').textContent='Device not found'; return; }
+    const on = r.online;
+    document.getElementById('name').textContent = r.name + ' (' + r.isp + ')';
+    document.getElementById('sub').textContent = r.location + ' &middot; ' + r.ip;
+    document.getElementById('status').textContent = on?'ONLINE':'OFFLINE';
+    document.getElementById('status').className = 'status '+(on?'on':'off');
+    let meta = `<div class="item"><div class="lbl">IP Address</div><div class="val">${esc(r.ip)}</div></div>
+      <div class="item"><div class="lbl">ISP</div><div class="val">${esc(r.isp)}</div></div>
+      <div class="item"><div class="lbl">Location</div><div class="val">${esc(r.location)}</div></div>`;
+    if (r.type==='ping'){
+      meta += `<div class="item"><div class="lbl">Ping Check</div><div class="val">${on?'Reachable':'No reply'}</div></div>
+        <div class="item"><div class="lbl">Latency</div><div class="val">${on?esc(r.latency)+' ms':'--'}</div></div>`;
+      document.getElementById('meta').innerHTML = meta;
+      document.getElementById('sysWrap').style.display='none';
+      document.getElementById('histWrap').style.display='none';
+      if (r.hasNvr){
+        document.getElementById('ifaceWrap').style.display = 'none';
+        loadCameras();
+      } else {
+        document.getElementById('ifaceTable').innerHTML = `<div class="noface">Attendance device &mdash; ping reachability only.</div>`;
+      }
+      return;
+    }
+    meta += `<div class="item"><div class="lbl">Uptime</div><div class="val">${esc(r.upText)}</div></div>
+      <div class="item"><div class="lbl">Version</div><div class="val">${esc(r.version)}</div></div>
+      <div class="item"><div class="lbl">Total Traffic</div><div class="val">RX ${esc(r.totalRx)} &middot; TX ${esc(r.totalTx)}</div></div>
+      <div class="item" style="grid-column:1/-1"><div class="lbl">Model</div><div class="val">${esc(r.model)}</div></div>`;
+    document.getElementById('meta').innerHTML = meta;
+
+    // populate interface dropdown
+    const sel = document.getElementById('selIface');
+    const prevIface = sel.value;
+    if (r.interfaces && r.interfaces.length){
+      sel.innerHTML = r.interfaces.map(i=>`<option value="${i.idx}">${esc(i.name)}</option>`).join('');
+      if (prevIface && [...sel.options].some(o=>o.value===prevIface)) sel.value = prevIface;
+      else if (sel.options.length) sel.options[0].selected = true;
+    } else {
+      sel.innerHTML = `<option value="">No interfaces</option>`;
+    }
+
+    loadHist();
+
+    // CPU/Memory chart (mikrotik only typically)
+    const hasCpu = r.hist && r.hist.some(h=>h.cpu!=null) || r.hist && r.hist.some(h=>h.memUsed!=null);
+    if (on && hasCpu && r.hist){
+      document.getElementById('cpuNa').style.display='none';
+      document.getElementById('chCpu').style.display='block';
+      const tl = timeLabels(r.hist);
+      const cpu = r.hist.map(h=>h.cpu==null?null:h.cpu);
+      const mem = r.hist.map(h=>h.memUsed==null?null:h.memUsed);
+      if (chCpu){ chCpu.data.labels=tl; chCpu.data.datasets[0].data=cpu; chCpu.data.datasets[1].data=mem; chCpu.update(); }
+      else {
+        chCpu = new Chart(document.getElementById('chCpu'), {
+          type:'line',
+          data:{ labels:tl, datasets:[
+            {label:'CPU %', data:cpu, borderColor:'#f39c12', backgroundColor:'rgba(243,156,18,.15)', fill:true, tension:.3, pointRadius:0},
+            {label:'Memory %', data:mem, borderColor:'#e74c3c', backgroundColor:'rgba(231,76,60,.15)', fill:true, tension:.3, pointRadius:0}
+          ]},
+          options:{ responsive:true, maintainAspectRatio:false, animation:false,
+            plugins:{legend:{labels:{color:'#e6edf7', boxWidth:12, font:{size:11}}}},
+            scales:{ x:{ticks:{color:'#8fa1bd', maxTicksLimit:8}, grid:{color:'#2a3547'}},
+                     y:{min:0,max:100,ticks:{color:'#8fa1bd', callback:v=>v+'%'}, grid:{color:'#2a3547'}} } }
+        });
+      }
+    } else {
+      document.getElementById('cpuNa').style.display='block';
+      document.getElementById('chCpu').style.display='none';
+    }
+
+    // interface table
+    const tbl = document.getElementById('ifaceTable');
+    if (!on){
+      tbl.innerHTML = `<div class="warn">Device not reachable (SNMP timeout / powered off).</div>`;
+    } else if (!r.interfaces.length){
+      tbl.innerHTML = `<div class="noface">No interface data available.</div>`;
+    } else {
+      tbl.innerHTML = `<table><thead><tr><th>Interface</th><th>Link</th><th>RX</th><th>TX</th></tr></thead>
+        <tbody>${r.interfaces.map(i=>`<tr>
+          <td>${esc(i.name)}</td>
+          <td><span class="dot ${i.oper===1?'up':'down'}"></span>${i.oper===1?'Up':'Down'}</td>
+          <td>${esc(i.rxRate||'--')} <span style="color:var(--mut)">(${esc(i.rx)})</span></td>
+          <td>${esc(i.txRate||'--')} <span style="color:var(--mut)">(${esc(i.tx)})</span></td></tr>`).join('')}
+        </tbody></table>`;
+    }
+  } catch(e){ console.error(e); }
+}
+let histSeconds = 86400;
+let camData = null;
+let camFilter = 'all';
+let showHidden = false;
+let camAgoTimer = null;
+
+function setCamFilter(f){
+  camFilter = (camFilter === f && f !== 'all') ? 'all' : f;
+  renderCamTiles();
+  renderCamTable();
+}
+function toggleHidden(){ showHidden = !showHidden; renderCamTable(); }
+
+function renderCamTiles(){
+  if (!camData) return;
+  const d = camData;
+  const tile = (cls, lbl, val, click) =>
+    `<div class="tile ${cls} ${click?'clickable':''} ${click && camFilter===click?'active':''}" ${click?`onclick="setCamFilter('${click}')"`:''}>
+       <div class="tlbl">${lbl}</div><div class="tnum">${val}</div></div>`;
+  document.getElementById('camSummary').innerHTML =
+    tile('', 'Channels', d.capacity || d.count || 0, '') +
+    tile('on', 'Online', d.onlineCount || 0, 'online') +
+    tile('off', 'Offline', d.offlineCount || 0, 'offline') +
+    tile('', 'Free Ch', d.freeCh || 0, '');
+  document.getElementById('camTools').innerHTML = (d.hiddenCount > 0)
+    ? `<button class="linkbtn" onclick="toggleHidden()">${showHidden ? 'Hide' : 'Show'} removed cameras (${d.hiddenCount})</button>`
+    : '';
+}
+
+function renderCamTable(){
+  if (!camData) return;
+  let list = (camData.cameras || []).filter(c => showHidden ? true : !c.hidden);
+  if (camFilter === 'online') list = list.filter(c => c.online === true);
+  else if (camFilter === 'offline') list = list.filter(c => c.online === false);
+  if (!list.length){
+    const msg = camFilter === 'offline' ? 'No offline cameras — all are online.' : (camFilter === 'online' ? 'No online cameras.' : 'No cameras.');
+    document.getElementById('camTable').innerHTML = `<div class="noface" style="color:var(--mut)">${msg}</div>`;
+    return;
+  }
+  document.getElementById('camTable').innerHTML = `<div class="camscroll"><table>
+    <thead><tr><th>Ch</th><th>Camera Name</th><th>IP Address</th><th>Model</th><th>Status</th><th style="text-align:right">Action</th></tr></thead>
+    <tbody>${list.map(c=>{
+      const cls = c.online===true?'on':(c.online===false?'off':'unk');
+      const txt = c.online===true?'Online':(c.online===false?'Offline':'Unknown');
+      const acts = c.hidden
+        ? `<button class="actbtn restore" title="Restore" onclick="restoreCamera(${c.id})">&#8635;</button>`
+        : `<button class="actbtn" title="Edit name" onclick="editCamera(${c.id})">&#9998;</button>
+           <button class="actbtn del" title="Remove from dashboard" onclick="hideCamera(${c.id})">&#128465;</button>`;
+      return `<tr class="${c.hidden?'hiddenrow':''}">
+        <td>${esc(c.id)}</td>
+        <td>${esc(c.name)}${c.alias?' <span style="color:var(--mut);font-size:11px">(alias)</span>':''}</td>
+        <td>${esc(c.ip)}</td>
+        <td style="color:var(--mut)">${esc(c.model)}</td>
+        <td><span class="camdot ${cls}"></span>${txt}</td>
+        <td style="text-align:right">${acts}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+async function saveCamMeta(payload){
+  try {
+    await fetch('/api/camera-meta', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  } catch(e){}
+  camData = null;
+  await loadCameras();
+}
+function editCamera(ch){
+  const cur = (camData.cameras.find(c=>c.id===ch) || {});
+  const v = prompt('Set a display name (alias) for channel ' + ch + ':', cur.alias || cur.name || '');
+  if (v === null) return;
+  saveCamMeta({ nvr: id, channel: String(ch), alias: v.trim() });
+}
+function hideCamera(ch){
+  if (!confirm('Remove this camera from the dashboard view?\n(NVR is not changed — you can restore it later.)')) return;
+  saveCamMeta({ nvr: id, channel: String(ch), hidden: true });
+}
+function restoreCamera(ch){
+  saveCamMeta({ nvr: id, channel: String(ch), hidden: false });
+}
+function fmtAgo(ms){
+  const s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+  if (s < 60) return s + 's ago';
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ago';
+  return Math.floor(m / 60) + 'h ago';
+}
+
+async function loadCameras(){
+  const wrap = document.getElementById('camWrap');
+  wrap.style.display = 'block';
+  try {
+    const res = await fetch('/api/nvr?id=' + encodeURIComponent(id));
+    if (res.status === 401) { window.location.href = '/login'; return; }
+    const d = await res.json();
+    if (d.error && (!d.cameras || !d.cameras.length)){
+      document.getElementById('camSummary').innerHTML = `<span class="warn">Camera data unavailable: ${esc(d.error)}</span>`;
+      document.getElementById('camTools').innerHTML = '';
+      document.getElementById('camTable').innerHTML = '';
+      return;
+    }
+    camData = d;
+    // NVR header info (matches the NVR summary style)
+    document.getElementById('meta').innerHTML =
+      `<div class="item"><div class="lbl">Model</div><div class="val">${esc(d.model)}</div></div>
+       <div class="item"><div class="lbl">Address</div><div class="val">${esc(d.ip)}:${esc(d.port)}</div></div>
+       <div class="item"><div class="lbl">Brand</div><div class="val">${esc(d.brand)}</div></div>
+       <div class="item"><div class="lbl">Status</div><div class="val">${d.online?'Online':'Offline'}</div></div>
+       <div class="item" style="grid-column:1/-1"><div class="lbl">Serial Number</div><div class="val">${esc(d.serialNumber)}</div></div>`;
+    renderCamTiles();
+    renderCamTable();
+    const upd = document.getElementById('camUpdated');
+    upd.textContent = 'Updated ' + fmtAgo(d.updated);
+    if (!camAgoTimer) camAgoTimer = setInterval(() => { if (camData) upd.textContent = 'Updated ' + fmtAgo(camData.updated); }, 1000);
+  } catch(e){
+    document.getElementById('camSummary').innerHTML = `<span class="warn">Camera data unavailable: ${esc(e.message||e)}</span>`;
+  }
+}
+async function loadHist(){
+  try {
+    const iface = document.getElementById('selIface').value;
+    if (!iface) return;
+    const res = await fetch(`/api/history?id=${encodeURIComponent(id)}&iface=${iface}&range=${histSeconds}`);
+    const d = await res.json();
+    const pts = d.points || [];
+    const labels = pts.map(p=>new Date(p.t).toLocaleTimeString());
+    const rx = pts.map(p=>p.rx||0);
+    const tx = pts.map(p=>p.tx||0);
+    if (chHist){
+      chHist.data.labels=labels; chHist.data.datasets[0].data=rx; chHist.data.datasets[1].data=tx; chHist.update();
+    } else {
+      chHist = new Chart(document.getElementById('chHist'), {
+        type:'line',
+        data:{ labels, datasets:[
+          {label:'RX '+(d.name||''), data:rx, borderColor:'#4a8fe0', backgroundColor:'rgba(74,143,224,.12)', fill:true, tension:.3, pointRadius:0},
+          {label:'TX '+(d.name||''), data:tx, borderColor:'#2ecc71', backgroundColor:'rgba(46,204,113,.1)', fill:true, tension:.3, pointRadius:0}
+        ]},
+        options:{ responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{legend:{labels:{color:'#e6edf7', boxWidth:12, font:{size:11}}}},
+          scales:{ x:{ticks:{color:'#8fa1bd', maxTicksLimit:10}, grid:{color:'#2a3547'}},
+                   y:{ticks:{color:'#8fa1bd', callback:v=>fmtBps(v)}, grid:{color:'#2a3547'}} } }
+      });
+    }
+  } catch(e){ console.error(e); }
+}
+document.getElementById('selIface').addEventListener('change', loadHist);
+document.getElementById('timeBtns').addEventListener('click', e=>{
+  const btn = e.target.closest('.tbtn'); if (!btn) return;
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  histSeconds = parseInt(btn.dataset.s,10);
+  loadHist();
+});
+load();
+setInterval(load, 10000);
+</script>
+</body>
+</html>

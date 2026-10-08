@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="Company Logo">
+  <defs>
+    <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3d4fd8"/>
+      <stop offset="1" stop-color="#20268a"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="92" height="92" rx="22" fill="url(#lg)"/>
+  <!-- shield -->
+  <path d="M48 18l18 7v14c0 12-7.5 20-18 24-10.5-4-18-12-18-24V25l18-7z"
+        fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round"/>
+  <!-- surveillance eye / dot -->
+  <circle cx="48" cy="44" r="9" fill="#ffffff"/>
+  <circle cx="48" cy="44" r="4.2" fill="#20268a"/>
+</svg>

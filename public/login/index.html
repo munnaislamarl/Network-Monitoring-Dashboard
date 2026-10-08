@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Surveillance Operation Center — secure sign in" />
+  <title>Sign In — AKIJ Essential Ltd. (Flour &amp; Dal) — Network Operation Center</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="icon" href="assets/akij-essential-logo.jpg" type="image/jpeg" />
+</head>
+<body>
+  <!-- Animated technology / network particle background -->
+  <canvas id="network-bg" aria-hidden="true"></canvas>
+  <!-- Click ripple effects (above particles, below card) -->
+  <canvas id="ripple-bg" aria-hidden="true"></canvas>
+
+  <main class="login-shell">
+    <section class="login-card" aria-labelledby="login-heading">
+      <!-- Logo -->
+      <div class="logo-wrap">
+        <img
+          src="assets/akij-essential-logo.jpg"
+          alt="AKIJ Essential Ltd. Logo"
+          width="96"
+          height="96"
+          class="logo"
+        />
+      </div>
+
+      <!-- Headings -->
+      <h1 id="login-heading" class="title">AKIJ Essential Ltd. (Flour &amp; Dal)</h1>
+      <p class="subtitle">Network Operation Center</p>
+
+      <!-- Form -->
+      <form id="login-form" class="login-form" novalidate>
+        <!-- Username / Email -->
+        <div class="field">
+          <label class="field-label" for="username">USERNAME OR EMAIL</label>
+          <div class="input-group" data-field>
+            <span class="input-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </span>
+            <input
+              id="username"
+              name="username"
+              type="text"
+              placeholder="Enter username or email"
+              autocomplete="username"
+              aria-describedby="username-error"
+              aria-required="true"
+              required
+            />
+            <span class="input-status" aria-hidden="true"></span>
+          </div>
+          <p id="username-error" class="error-msg" role="alert"></p>
+        </div>
+
+        <!-- Password -->
+        <div class="field">
+          <label class="field-label" for="password">PASSWORD</label>
+          <div class="input-group" data-field>
+            <span class="input-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </span>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="Enter password"
+              autocomplete="current-password"
+              aria-describedby="password-error"
+              aria-required="true"
+              required
+            />
+            <button
+              type="button"
+              id="toggle-password"
+              class="toggle-password"
+              aria-label="Show password"
+              aria-pressed="false"
+            >
+              <svg class="eye-open" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <svg class="eye-closed" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+                <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
+          </div>
+          <p id="password-error" class="error-msg" role="alert"></p>
+        </div>
+
+        <!-- Generic form error -->
+        <p id="form-error" class="form-error" role="alert"></p>
+
+        <!-- Submit -->
+        <button type="submit" id="signin-btn" class="signin-btn">
+          <span class="btn-label">Sign in</span>
+          <span class="btn-spinner" aria-hidden="true"></span>
+        </button>
+      </form>
+
+      <!-- Footer -->
+      <footer class="login-footer">
+        <p class="footer-team">IT Infrastructure &amp; Security Team, IT Department.</p>
+        <p class="footer-copy">© 2026 AKIJ Resource. All Rights Reserved.</p>
+      </footer>
+    </section>
+  </main>
+
+  <script src="js/script.js"></script>
+</body>
+</html>

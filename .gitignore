@@ -1,0 +1,33 @@
+# ===== Secrets / local config (NEVER commit these) =====
+auth.json
+routers.json
+camera-meta.json
+server/config.json
+
+# ===== Logs & runtime data =====
+*.log
+/logs/
+/history/
+
+# ===== Dependencies =====
+node_modules/
+
+# ===== Other local projects in this workspace (not part of this repo) =====
+/cctv-dashboard/
+/factory-itsm/
+/fai-shop-dashboard/
+/opex-hub/
+/login/
+/scripts/
+
+# ===== Local tooling / screenshots =====
+/.opencode/
+/.playwright-mcp/
+/opencode.json
+/*.png
+/*.ps1
+
+# ===== OS junk =====
+Thumbs.db
+Desktop.ini
+.DS_Store

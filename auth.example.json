@@ -1,0 +1,10 @@
+{
+  "users": [
+    {
+      "username": "admin",
+      "password": "change-me",
+      "displayName": "Administrator",
+      "role": "admin"
+    }
+  ]
+}
