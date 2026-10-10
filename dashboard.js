@@ -100,8 +100,8 @@ function requireAdmin(req, res) {
 
 function toArr(o) { return o.split('.').map(Number); }
 
-function newSession(host) {
-  const s = new snmp.Session({ host, port: PORT, community: COMMUNITY, timeout: 3000, retries: 1 });
+function newSession(host, snmpPort) {
+  const s = new snmp.Session({ host, port: snmpPort || PORT, community: COMMUNITY, timeout: 3000, retries: 1 });
   // snmp-native emits an 'error' event on malformed packets. With no listener,
   // Node turns that into an uncaughtException and the whole server can die.
   // Swallow per-device errors so one bad device can't take the dashboard down.
@@ -128,14 +128,14 @@ function snmpGet(session, oidStr, timeoutMs) {
   });
 }
 
-async function snmpGetMany(host, oidStrs) {
+async function snmpGetMany(host, oidStrs, snmpPort) {
   const CONCURRENCY = 8;
   const results = new Array(oidStrs.length);
   let idx = 0;
   async function worker() {
     while (idx < oidStrs.length) {
       const i = idx++;
-      const s = newSession(host);
+      const s = newSession(host, snmpPort);
       results[i] = await snmpGet(s, oidStrs[i]);
       try { s.close(); } catch (e) {}
     }
@@ -150,12 +150,12 @@ function num(v) {
   return Number(v);
 }
 
-async function snmpScanIfDescr(host, maxIdx) {
+async function snmpScanIfDescr(host, maxIdx, snmpPort) {
   const names = {};
   const maxIdxN = maxIdx || 70;
   const oidList = [];
   for (let i = 1; i <= maxIdxN; i++) oidList.push('1.3.6.1.2.1.2.2.1.2.' + i);
-  const res = await snmpGetMany(host, oidList);
+  const res = await snmpGetMany(host, oidList, snmpPort);
   for (const r of res) {
     if (r.value == null || r.value === 'noSuchObject' || r.value === 'noSuchInstance') continue;
     const oidParts = r.oid.split('.');
@@ -166,9 +166,9 @@ async function snmpScanIfDescr(host, maxIdx) {
 }
 
 // Bounded manual getNext walk (avoids snmp-native getSubtree recursion issues)
-function snmpWalkIndexed(host, rootStr) {
+function snmpWalkIndexed(host, rootStr, snmpPort) {
   return new Promise((resolve) => {
-    const s = newSession(host);
+    const s = newSession(host, snmpPort);
     const out = {};
     const rootArr = toArr(rootStr);
     let current = rootArr;
@@ -234,6 +234,7 @@ const state = routers.map(r => ({
   id: r.id, name: r.name, isp: r.isp, location: r.location, ip: r.ip,
   type: r.type || 'snmp',
   vendor: 'unknown',
+  snmpPort: r.snmpPort || null,
   nvr: r.nvr || null,
   online: false, version: null, model: null, upText: null, upSeconds: 0,
   lastSeen: 0, error: null, latency: null,
@@ -285,23 +286,23 @@ async function collectInterfaces(routerState) {
   let names = null;
   // quick reachability check — skip full scan if device is down
   try {
-    const rchk = newSession(routerState.ip);
+    const rchk = newSession(routerState.ip, routerState.snmpPort);
     const up = await snmpGet(rchk, '1.3.6.1.2.1.1.3.0', 1500);
     try { rchk.close(); } catch (e) {}
     if (up === undefined) return;
   } catch (e) { return; }
   try {
-    const chk = newSession(routerState.ip);
+    const chk = newSession(routerState.ip, routerState.snmpPort);
     const vChk = await snmpGet(chk, '1.3.6.1.4.1.14988.1.1.7.7.0', 1500);
     try { chk.close(); } catch (e) {}
     if (vChk != null && String(vChk) !== 'noSuchObject') {
-      names = await snmpWalkIndexed(routerState.ip, '1.3.6.1.4.1.14988.1.1.14.1.1.2');
+      names = await snmpWalkIndexed(routerState.ip, '1.3.6.1.4.1.14988.1.1.14.1.1.2', routerState.snmpPort);
       if (Object.keys(names).length === 0) names = null;
     }
   } catch (e) { names = null; }
   if (!names) {
     try {
-      names = await snmpScanIfDescr(routerState.ip, 70);
+      names = await snmpScanIfDescr(routerState.ip, 70, routerState.snmpPort);
     } catch (e) { names = {}; }
   }
   names = names || {};
@@ -342,7 +343,7 @@ async function pollRouter(rs) {
       meta.push({ idx: it.idx, oper: `1.3.6.1.2.1.2.2.1.8.${it.idx}`, rx: `1.3.6.1.2.1.2.2.1.10.${it.idx}`, tx: `1.3.6.1.2.1.2.2.1.16.${it.idx}` });
       oids.push(meta[meta.length - 1].oper, meta[meta.length - 1].rx, meta[meta.length - 1].tx);
     }
-    const res = await snmpGetMany(rs.ip, oids);
+    const res = await snmpGetMany(rs.ip, oids, rs.snmpPort);
     const byOid = {};
     for (const r of res) byOid[r.oid] = r.value;
     const upcs = byOid[uptimeStr];
@@ -352,7 +353,7 @@ async function pollRouter(rs) {
     // non-MikroTik devices do not abort the whole poll
     let vern = undefined;
     try {
-      const vs = newSession(rs.ip);
+      const vs = newSession(rs.ip, rs.snmpPort);
       vern = await snmpGet(vs, versionStr, 1500);
       try { vs.close(); } catch (e) {}
     } catch (e) { vern = undefined; }
@@ -385,19 +386,19 @@ async function pollRouter(rs) {
     if (rs.online) {
       try {
         // CPU: hrProcessorLoad per core -> overall = busiest core
-        const cores = await snmpWalkIndexed(rs.ip, '1.3.6.1.2.1.25.3.3.1.2');
+        const cores = await snmpWalkIndexed(rs.ip, '1.3.6.1.2.1.25.3.3.1.2', rs.snmpPort);
         const loads = Object.values(cores).map(Number).filter((n) => !isNaN(n));
         if (loads.length) rs.cpu = Math.max.apply(null, loads);
 
         // Memory: pick the "memory/ram" row from hrStorageTable
-        const descr = await snmpWalkIndexed(rs.ip, '1.3.6.1.2.1.25.2.3.1.3');
+        const descr = await snmpWalkIndexed(rs.ip, '1.3.6.1.2.1.25.2.3.1.3', rs.snmpPort);
         let memIdx = null;
         for (const k of Object.keys(descr)) { if (/memory|ram/i.test(String(descr[k]))) { memIdx = k; break; } }
         if (memIdx != null) {
           const allocStr = '1.3.6.1.2.1.25.2.3.1.4.' + memIdx;
           const sizeStr = '1.3.6.1.2.1.25.2.3.1.5.' + memIdx;
           const usedStr = '1.3.6.1.2.1.25.2.3.1.6.' + memIdx;
-          const res2 = await snmpGetMany(rs.ip, [allocStr, sizeStr, usedStr]);
+          const res2 = await snmpGetMany(rs.ip, [allocStr, sizeStr, usedStr], rs.snmpPort);
           const mm = {}; for (const r of res2) mm[r.oid] = r.value;
           const unit = num(mm[allocStr]) || 1;
           const sizeU = num(mm[sizeStr]);
