@@ -87,7 +87,9 @@ async function getJson(cookie, p) {
     const gs = process.env.SHEETS_API_URL ? require('../lib/gsheets.js') : null
     const siteHist = { generated: now, devices: {} }
 
+    let usedSheets = false
     if (gs && gs.enabled()) {
+     try {
       // History in Google Sheets: 'State' tab (prev octets) + 'History' tab (rate samples)
       const prevMap = {}
       try {
@@ -129,7 +131,10 @@ async function getJson(cookie, p) {
         for (const d of Object.values(siteHist.devices)) for (const s of Object.values(d)) if (s.pts.length > MAXPTS) s.pts = s.pts.slice(-MAXPTS)
       } catch (e) { console.warn('[dump] history read:', e.message) }
       console.log('[dump] history via Sheets: ' + append.length + ' rows')
-    } else {
+      usedSheets = true
+     } catch (e) { console.warn('[dump] sheets history failed -> using cache: ' + (e && e.message)); siteHist.devices = {} }
+    }
+    if (!usedSheets) {
       // Fallback: file / Actions-cache based history
       const HISTORY_FILE = process.env.HISTORY_FILE || path.join(ROOT, 'history-data', 'history.json')
       let hist = { version: 1, devices: {} }
