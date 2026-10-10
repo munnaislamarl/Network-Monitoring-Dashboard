@@ -101,7 +101,7 @@ function requireAdmin(req, res) {
 function toArr(o) { return o.split('.').map(Number); }
 
 function newSession(host, snmpPort) {
-  const s = new snmp.Session({ host, port: snmpPort || PORT, community: COMMUNITY, timeout: 3000, retries: 1 });
+  const s = new snmp.Session({ host, port: snmpPort || PORT, community: COMMUNITY, timeout: 6000, retries: 2 });
   // snmp-native emits an 'error' event on malformed packets. With no listener,
   // Node turns that into an uncaughtException and the whole server can die.
   // Swallow per-device errors so one bad device can't take the dashboard down.
