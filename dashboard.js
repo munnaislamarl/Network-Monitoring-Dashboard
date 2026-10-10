@@ -358,21 +358,36 @@ async function pollRouter(rs) {
     }
 
     const now = Date.now();
-    // CPU / Memory (MikroTik private OIDs)
-    const cpuStr = '1.3.6.1.4.1.14988.1.1.3.1.0';
-    const memTotStr = '1.3.6.1.4.1.14988.1.1.2.0';
-    const memFreeStr = '1.3.6.1.4.1.14988.1.1.2.1.0';
-    if (rs.vendor === 'mikrotik' && rs.online) {
-      const cm = await snmpGetMany(rs.ip, [cpuStr, memTotStr, memFreeStr]);
-      const byOid2 = {}; for (const r of cm) byOid2[r.oid] = r.value;
-      const cpu = num(byOid2[cpuStr]);
-      const mTot = num(byOid2[memTotStr]);
-      const mFree = num(byOid2[memFreeStr]);
-      rs.cpu = (cpu != null && !isNaN(cpu)) ? cpu : null;
-      rs.memTotal = (mTot != null && !isNaN(mTot)) ? mTot : null;
-      rs.memFree = (mFree != null && !isNaN(mFree)) ? mFree : null;
-    } else {
-      rs.cpu = null; rs.memTotal = null; rs.memFree = null;
+    // CPU / Memory via standard HOST-RESOURCES-MIB (works on MikroTik, Linux, Cisco...)
+    rs.cpu = null; rs.memTotal = null; rs.memFree = null;
+    if (rs.online) {
+      try {
+        // CPU: hrProcessorLoad per core -> overall = busiest core
+        const cores = await snmpWalkIndexed(rs.ip, '1.3.6.1.2.1.25.3.3.1.2');
+        const loads = Object.values(cores).map(Number).filter((n) => !isNaN(n));
+        if (loads.length) rs.cpu = Math.max.apply(null, loads);
+
+        // Memory: pick the "memory/ram" row from hrStorageTable
+        const descr = await snmpWalkIndexed(rs.ip, '1.3.6.1.2.1.25.2.3.1.3');
+        let memIdx = null;
+        for (const k of Object.keys(descr)) { if (/memory|ram/i.test(String(descr[k]))) { memIdx = k; break; } }
+        if (memIdx != null) {
+          const allocStr = '1.3.6.1.2.1.25.2.3.1.4.' + memIdx;
+          const sizeStr = '1.3.6.1.2.1.25.2.3.1.5.' + memIdx;
+          const usedStr = '1.3.6.1.2.1.25.2.3.1.6.' + memIdx;
+          const res2 = await snmpGetMany(rs.ip, [allocStr, sizeStr, usedStr]);
+          const mm = {}; for (const r of res2) mm[r.oid] = r.value;
+          const unit = num(mm[allocStr]) || 1;
+          const sizeU = num(mm[sizeStr]);
+          const usedU = num(mm[usedStr]);
+          if (sizeU != null && !isNaN(sizeU) && sizeU > 0) {
+            const total = sizeU * unit;
+            const used = (usedU != null && !isNaN(usedU) ? usedU : 0) * unit;
+            rs.memTotal = total;
+            rs.memFree = total - used;
+          }
+        }
+      } catch (e) { /* leave CPU/mem null if unsupported */ }
     }
 
     // history for graphs
