@@ -50,7 +50,7 @@ Actions → **Monitor & Deploy → Run workflow**।
 
 ## Tab structure
 
-**Devices** — `id  name  isp  location  ip  type  snmpport  nvr_brand  nvr_port  nvr_user  nvr_pass`
+**Devices** — `ID  NAME  ISP  LOCATION  IP  TYPE  SNMPPORT  NVR_BRAND  NVR_PORT  DEVICE-USER  DEVICE-PASS`
 **Users** — `username  password  displayName  role`
 **History** — `ts  deviceId  ifIdx  ifName  rxRate  txRate`  (অ্যাপ নিজে ভরবে)
 **State** — `deviceId  ifIdx  ts  rxBytes  txBytes`          (অ্যাপ নিজে ভরবে)

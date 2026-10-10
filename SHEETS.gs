@@ -90,7 +90,7 @@ function json_(o) {
 function setupNocDashboard() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var tabs = {
-    'Devices': ['id', 'name', 'isp', 'location', 'ip', 'type', 'snmpport', 'nvr_brand', 'nvr_port', 'nvr_user', 'nvr_pass'],
+    'Devices': ['ID', 'NAME', 'ISP', 'LOCATION', 'IP', 'TYPE', 'SNMPPORT', 'NVR_BRAND', 'NVR_PORT', 'DEVICE-USER', 'DEVICE-PASS'],
     'Users':   ['username', 'password', 'displayName', 'role'],
     'History': ['ts', 'deviceId', 'ifIdx', 'ifName', 'rxRate', 'txRate'],
     'State':   ['deviceId', 'ifIdx', 'ts', 'rxBytes', 'txBytes']
