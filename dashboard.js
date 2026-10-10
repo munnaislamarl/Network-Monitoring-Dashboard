@@ -246,16 +246,37 @@ async function pingHost(rs, timeoutMs) {
   return new Promise((resolve) => {
     const { exec } = require('child_process');
     const timeout = timeoutMs || 3000;
+    const isWin = process.platform === 'win32';
+    const cmd = isWin
+      ? `ping -n 1 -w ${Math.floor(timeout)} ${rs.ip}`
+      : `ping -c 1 -W ${Math.max(1, Math.floor(timeout / 1000))} ${rs.ip}`;
     let done = false;
-    const killer = setTimeout(() => { if (!done) { done = true; resolve(null); } }, timeout + 500);
-    exec(`ping -n 1 -w ${Math.floor(timeout)} ${rs.ip}`, { windowsHide: true },
-      (error, stdout, stderr) => {
-        if (done) return; done = true; clearTimeout(killer);
-        const m = String(stdout).match(/[<=\s]([0-9]+)ms/i);
-        const ttl = String(stdout).match(/TTL=/i);
-        if (error && !ttl) return resolve(null);
-        resolve(m ? parseInt(m[1], 10) : 0);
-      });
+    const killer = setTimeout(() => { if (!done) { done = true; resolve(null); } }, timeout + 1500);
+    exec(cmd, { windowsHide: true }, (error, stdout) => {
+      if (done) return; done = true; clearTimeout(killer);
+      const out = String(stdout);
+      const m = out.match(/time[=<]\s*([0-9.]+)\s*ms/i);
+      const reachable = /ttl=/i.test(out) || (error == null && !!m);
+      if (!reachable) return resolve(null);
+      resolve(m ? Math.round(parseFloat(m[1])) : 0);
+    });
+  });
+}
+
+// TCP reachability check (used for NVRs / any host whose ICMP is blocked).
+function tcpCheck(host, port, timeoutMs) {
+  return new Promise((resolve) => {
+    const net = require('net');
+    const timeout = timeoutMs || 3000;
+    const start = Date.now();
+    const sock = new net.Socket();
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; try { sock.destroy(); } catch (e) {} resolve(v); };
+    sock.setTimeout(timeout);
+    sock.once('connect', () => finish(Date.now() - start));
+    sock.once('timeout', () => finish(null));
+    sock.once('error', () => finish(null));
+    try { sock.connect(port, host); } catch (e) { finish(null); }
   });
 }
 
@@ -292,7 +313,8 @@ async function collectInterfaces(routerState) {
 
 async function pollRouter(rs) {
   if (rs.type === 'ping') {
-    const ms = await pingHost(rs);
+    // NVRs / port-forwarded hosts: check the TCP port (ICMP is often blocked).
+    const ms = rs.nvr ? await tcpCheck(rs.ip, rs.nvr.port || 80) : await pingHost(rs);
     if (ms == null) {
       if (rs.lastSeen && (Date.now() - rs.lastSeen) > GRACE_MS) {
         rs.online = false;
