@@ -8,7 +8,7 @@
  * এরপর প্রতিটি request-এ ?token=<TOKEN> দিতে হবে (GitHub secret SHEETS_TOKEN)।
  */
 
-var TOKEN = 'AEL-NOC-k9F3p2qLz7R4t'; // এটি আপনার GitHub secret SHEETS_TOKEN এর সমান হতে হবে
+var TOKEN = 'PASTE-YOUR-TOKEN-HERE'; // এটি আপনার GitHub secret SHEETS_TOKEN এর সমান হতে হবে
 
 function doGet(e) { return handle_(e, e.parameter || {}); }
 

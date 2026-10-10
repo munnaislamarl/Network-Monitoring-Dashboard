@@ -3,6 +3,7 @@ auth.json
 routers.json
 camera-meta.json
 server/config.json
+/AEL-NOC/
 
 # ===== Logs & runtime data =====
 *.log
