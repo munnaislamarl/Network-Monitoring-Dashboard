@@ -84,39 +84,42 @@
   .dot.up { background:var(--ok); }
   .dot.down { background:var(--off); }
   .scroll { max-height:340px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
-  /* ---- NVR detail ---- */
-  .nvrhead { margin-bottom:16px; }
-  .nvrtitle { font-size:20px; font-weight:700; }
-  .nvrtags { display:flex; gap:8px; margin-top:7px; }
-  .nvrchip { font-size:11px; font-weight:700; padding:3px 9px; border-radius:6px; background:rgba(74,143,224,.14); color:var(--acc); }
-  .nvrchip.brand { background:rgba(74,143,224,.1); color:#c9d4ea; }
-  .nvrsub { font-size:12px; color:var(--mut); margin-top:7px; font-family:Consolas,monospace; }
-  .nvrrow { display:flex; gap:18px; flex-wrap:wrap; align-items:stretch; margin-bottom:16px; }
-  .gauges { display:flex; gap:26px; align-items:center; justify-content:center; background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:16px 22px; }
-  .gauge { text-align:center; }
-  .ring { --p:0; --c:var(--acc); width:76px; height:76px; border-radius:50%; background:conic-gradient(var(--c) calc(var(--p)*1%), rgba(255,255,255,.09) 0); display:flex; align-items:center; justify-content:center; position:relative; margin:0 auto; }
-  .ring::before { content:''; position:absolute; inset:8px; background:var(--card); border-radius:50%; }
-  .ring span { position:relative; font-size:15px; font-weight:700; }
-  .glbl { font-size:10px; color:var(--mut); text-transform:uppercase; letter-spacing:.5px; margin-top:8px; }
-  .nvrright { flex:1; min-width:280px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; justify-content:flex-end; }
-  .kv { text-align:center; }
-  .kv .l { font-size:10px; color:var(--mut); text-transform:uppercase; letter-spacing:.4px; }
-  .kv .v { font-size:15px; font-weight:700; margin-top:4px; }
-  .bell { display:inline-flex; align-items:center; gap:6px; background:rgba(231,76,60,.14); color:var(--off); border-radius:8px; padding:8px 12px; font-weight:700; }
-  .pillhealthy { background:rgba(46,204,113,.16); color:var(--ok); border:1px solid rgba(46,204,113,.4); border-radius:8px; padding:8px 14px; font-weight:700; letter-spacing:.5px; }
-  .pillalert { background:rgba(231,76,60,.16); color:var(--off); border:1px solid rgba(231,76,60,.4); border-radius:8px; padding:8px 14px; font-weight:700; letter-spacing:.5px; }
-  .hddslots { display:flex; flex-wrap:wrap; gap:10px; }
-  .hslot { display:inline-flex; align-items:center; gap:7px; font-size:12px; padding:7px 13px; border-radius:20px; border:1px solid var(--line); color:var(--mut); }
-  .hslot .d { width:8px; height:8px; border-radius:50%; background:var(--mut); }
-  .hslot.ok { border-color:rgba(46,204,113,.5); color:#d7f5e5; }
-  .hslot.ok .d { background:var(--ok); box-shadow:0 0 6px var(--ok); }
-  .hslot.warn { border-color:rgba(243,156,18,.5); color:#fde3b5; }
-  .hslot.warn .d { background:var(--warn); box-shadow:0 0 6px var(--warn); }
-  /* ---- NVR page view ---- */
+  /* ---- NVR page: header + info row + HDD block + gauges ---- */
   #nvrView { display:none; }
+  body.nvr-mode .homeonly, body.nvr-mode .homechip { display:none !important; }
+  body.nvr-mode .morebtn { display:inline-flex !important; }
   .nvrcard { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin-bottom:16px; }
-  .back { color:var(--acc); font-weight:600; font-size:13px; cursor:pointer; display:inline-block; }
+  .nvrhead-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .back { color:var(--acc); font-weight:600; font-size:13px; cursor:pointer; }
   .back:hover { text-decoration:underline; }
+  .nvrtitle { font-size:20px; font-weight:700; }
+  .nvronline { margin-left:auto; font-size:12px; font-weight:700; padding:5px 12px; border-radius:6px; background:rgba(46,204,113,.15); color:var(--ok); }
+  .nvronline.off { background:rgba(231,76,60,.15); color:var(--off); }
+  .infogrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:12px; margin-top:16px; padding-top:16px; border-top:1px solid var(--line); }
+  .infogrid .lbl { font-size:10px; color:var(--mut); text-transform:uppercase; letter-spacing:.5px; }
+  .infogrid .val { font-size:14px; margin-top:5px; font-family:Consolas,monospace; word-break:break-all; }
+  .infogrid .val.green { color:var(--ok); }
+  .infogrid .val.red { color:var(--off); }
+  .monrow { display:flex; gap:14px; flex-wrap:wrap; align-items:stretch; margin-bottom:16px; }
+  .hddblock { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; flex:2; min-width:320px; }
+  .hddtitle { font-size:12px; color:var(--mut); text-transform:uppercase; letter-spacing:.5px; }
+  .hddtitle b { color:var(--txt); margin-left:6px; }
+  .hddgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr)); gap:10px; margin-top:14px; }
+  .hdd { background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:11px 12px; }
+  .hdd.connected { border-color:rgba(46,204,113,.4); }
+  .hdd .hname { font-weight:700; font-size:13px; }
+  .hdd .hcap { font-size:11px; color:var(--mut); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hdd .hst { display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; margin-top:8px; }
+  .hdd .hst.healthy { background:rgba(46,204,113,.15); color:var(--ok); }
+  .hdd .hst.empty { background:rgba(143,161,189,.15); color:var(--mut); }
+  .hdd .hst.warning { background:rgba(243,156,18,.15); color:var(--warn); }
+  .gaugeblock { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px 16px; flex:1; min-width:300px; display:flex; gap:34px; align-items:center; justify-content:center; flex-wrap:wrap; }
+  .gauge { text-align:center; }
+  .ring { --p:0; --c:#3a4357; width:84px; height:84px; border-radius:50%; background:conic-gradient(var(--c) calc(var(--p)*1%), rgba(255,255,255,.08) 0); display:flex; align-items:center; justify-content:center; position:relative; margin:0 auto; }
+  .ring::before { content:''; position:absolute; inset:9px; background:var(--card); border-radius:50%; }
+  .ring span { position:relative; font-size:16px; font-weight:700; }
+  .glabel { font-size:11px; color:var(--mut); text-transform:uppercase; letter-spacing:.4px; margin-top:9px; }
+  .gsub { font-size:10px; color:var(--mut); margin-top:3px; }
   .camwrap { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
   .camnav { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
   .navbtn { background:var(--bg); border:1px solid var(--line); color:var(--mut); padding:7px 13px; border-radius:8px; font-size:12px; cursor:pointer; }
@@ -157,22 +160,23 @@
 <body>
 <header class="appbar">
   <a class="brand" href="#" title="AKIJ Resource"><img src="assets/akij-essential-logo.jpg" alt="AKIJ Resource" class="brandlogo"></a>
-  <div class="searchwrap">
+  <div class="searchwrap homeonly">
     <span class="ic">&#128269;</span>
     <input id="search" type="text" placeholder="Search Device by Name or IP" oninput="doSearch()">
   </div>
-  <button class="btn addbtn" onclick="addNote()">+ Add Device</button>
+  <button class="btn addbtn homeonly" onclick="addNote()">+ Add Device</button>
   <div class="chips end">
-    <span class="chip" id="clockChip" title="Live time"><span style="color:var(--mut)">&#128336;</span> <b id="clock">--</b></span>
-    <span class="chip alert filterable" onclick="showDevList('offline')" title="Show offline devices">&#128276; Alerts <b id="chipAlerts">0</b></span>
-    <span class="chip filterable" onclick="showDevList('all')" title="Show all devices">Total <b id="stTotal">0</b></span>
-    <span class="chip on filterable" onclick="showDevList('online')" title="Show online devices">Online <b id="stOn">0</b></span>
-    <span class="chip off filterable" onclick="showDevList('offline')" title="Show offline devices">Offline <b id="stOff">0</b></span>
-    <span class="chip filterable" onclick="showCamList('all')" title="Show all cameras">Total Cam <b id="stTotalCam">0</b></span>
-    <span class="chip on filterable" onclick="showCamList('online')" title="Show online cameras">Online Cam <b id="stOnCam">0</b></span>
-    <span class="chip off filterable" onclick="showCamList('offline')" title="Show offline cameras">Offline Cam <b id="stOffCam">0</b></span>
+    <span class="chip homechip" id="clockChip" title="Live time"><span style="color:var(--mut)">&#128336;</span> <b id="clock">--</b></span>
+    <span class="chip alert filterable homechip" onclick="showDevList('offline')" title="Show offline devices">&#128276; Alerts <b id="chipAlerts">0</b></span>
+    <span class="chip filterable homechip" onclick="showDevList('all')" title="Show all devices">Total <b id="stTotal">0</b></span>
+    <span class="chip on filterable homechip" onclick="showDevList('online')" title="Show online devices">Online <b id="stOn">0</b></span>
+    <span class="chip off filterable homechip" onclick="showDevList('offline')" title="Show offline devices">Offline <b id="stOff">0</b></span>
+    <span class="chip filterable homechip" onclick="showCamList('all')" title="Show all cameras">Total Cam <b id="stTotalCam">0</b></span>
+    <span class="chip on filterable homechip" onclick="showCamList('online')" title="Show online cameras">Online Cam <b id="stOnCam">0</b></span>
+    <span class="chip off filterable homechip" onclick="showCamList('offline')" title="Show offline cameras">Offline Cam <b id="stOffCam">0</b></span>
     <span class="chip live"><span class="livedot"></span>Live</span>
-    <span class="chip" style="opacity:.7">Updated <b id="stUpd">--</b></span>
+    <span class="chip morebtn" style="display:none;cursor:pointer">More &#9662;</span>
+    <span class="chip homechip" style="opacity:.7">Updated <b id="stUpd">--</b></span>
     <div class="user">
       <div class="uavatar">M</div>
       <div class="uinfo"><div class="uname">Munna</div><div class="urole">admin</div></div>
@@ -360,39 +364,59 @@ function renderCameras(){
   const cnt = document.getElementById('camCount'); if (cnt) cnt.textContent = list.length + ' / ' + total + ' cameras';
   const g = document.getElementById('camGrid'); if (g) g.innerHTML = list.map(camCard).join('') || '<div class="empty" style="grid-column:1/-1;margin:10px 0">No cameras match.</div>';
 }
+function fmtSizeMB(mb){
+  if (mb == null || isNaN(mb) || mb <= 0) return '0 GB';
+  if (mb >= 1048576) return (mb/1048576).toFixed(2) + ' TB';
+  if (mb >= 1024) return (mb/1024).toFixed(1) + ' GB';
+  return Math.round(mb) + ' MB';
+}
+function fmtAgo(ts){ const s = Math.max(0, Math.floor((Date.now() - ts) / 1000)); return s < 60 ? s + 's ago' : Math.floor(s/60) + 'm ago'; }
 function openNvrView(n){
   CUR_NVR = n;
+  document.body.classList.add('nvr-mode');
   document.getElementById('main').style.display = 'none';
   const v = document.getElementById('nvrView');
   v.style.display = 'block';
   document.getElementById('refreshFab').classList.add('show');
   const alerts = (n.offlineCount || 0) + ((n.hdds||[]).filter(h => h.status && h.status !== 'healthy').length);
-  let html = '<div class="nvrcard">';
-  html += '<div class="back" onclick="backHome()">&larr; Back to Dashboard</div>';
-  html += '<div class="nvrhead" style="margin-top:10px">' +
-    '<div class="nvrtitle">' + esc(n.name) + '</div>' +
-    '<div class="nvrtags"><span class="nvrchip">' + esc(n.model || '--') + '</span><span class="nvrchip brand">' + esc((n.brand || '').toUpperCase()) + '</span></div>' +
-    '<div class="nvrsub">' + esc(n.ip) + ':' + esc(n.port) + '</div></div>';
-  html += '<div class="nvrrow">' +
-    '<div class="gauges">' + ringHtml(n.cpuUsage, 'CPU') + ringHtml(n.ram ? n.ram.percent : null, 'RAM') + ringHtml(n.storage ? n.storage.percent : null, 'STORAGE') + '</div>' +
-    '<div class="nvrright">' +
-      '<span class="bell">&#128276; ' + alerts + '</span>' +
-      '<div class="kv"><div class="l">Uptime</div><div class="v">' + fmtUptime(n.uptimeSeconds) + '</div></div>' +
-      '<div class="kv"><div class="l">Firmware</div><div class="v" style="font-size:13px">' + esc(n.firmwareVersion || '--') + '</div></div>' +
-      '<div class="kv"><div class="l">Updated</div><div class="v" style="font-size:13px">' + new Date(n.updated || Date.now()).toLocaleTimeString() + '</div></div>' +
-      (alerts > 0 ? '<span class="pillalert">' + alerts + ' alerts</span>' : '<span class="pillhealthy">HEALTHY</span>') +
+  const online = n.online !== false;
+  const health = !online ? 'Offline' : (alerts > 0 ? 'Warning' : 'Healthy');
+  let html = '<div class="nvrcard">' +
+    '<div class="nvrhead-row"><span class="back" onclick="backHome()">&larr; Back to Dashboard</span><span class="nvrtitle">' + esc(n.name) + '</span><span class="nvronline' + (online ? '' : ' off') + '">' + (online ? 'ONLINE' : 'OFFLINE') + '</span></div>' +
+    '<div class="infogrid">' +
+      '<div class="item"><div class="lbl">Model</div><div class="val">' + esc(n.model || '--') + '</div></div>' +
+      '<div class="item"><div class="lbl">Brand</div><div class="val">' + esc(n.brand || '--') + '</div></div>' +
+      '<div class="item"><div class="lbl">IP Address</div><div class="val">' + esc(n.ip) + ':' + esc(n.port) + '</div></div>' +
+      '<div class="item"><div class="lbl">Status</div><div class="val ' + (online ? 'green' : 'red') + '">' + (online ? 'Online' : 'Offline') + '</div></div>' +
+      '<div class="item"><div class="lbl">Alerts</div><div class="val">' + alerts + '</div></div>' +
+      '<div class="item"><div class="lbl">Uptime</div><div class="val">' + fmtUptime(n.uptimeSeconds) + '</div></div>' +
+      '<div class="item"><div class="lbl">Backup</div><div class="val">--</div></div>' +
+      '<div class="item"><div class="lbl">Firmware</div><div class="val">' + esc(n.firmwareVersion || '--') + '</div></div>' +
+      '<div class="item"><div class="lbl">Last Updated</div><div class="val">' + fmtAgo(n.updated || Date.now()) + '</div></div>' +
+      '<div class="item"><div class="lbl">Health</div><div class="val ' + (online ? 'green' : 'red') + '">' + health + '</div></div>' +
     '</div></div>';
   const total = n.totalSlots || (n.hdds && n.hdds.length ? Math.max.apply(null, n.hdds.map(h => h.id)) : 0);
+  const connected = n.connectedSlots != null ? n.connectedSlots : (n.hdds||[]).filter(h => h.status === 'healthy' && h.capacityMB > 0).length;
   const byId = {}; (n.hdds || []).forEach(h => byId[h.id] = h);
-  let slots = '';
+  let hddHtml = '';
   for (let i = 1; i <= total; i++){
     const h = byId[i];
-    if (h && h.status === 'healthy' && h.capacityMB > 0) slots += '<span class="hslot ok"><span class="d"></span>hdd' + i + ': ' + fmtSize(h.freeMB) + ' free / ' + fmtSize(h.capacityMB) + '</span>';
-    else if (h && h.status === 'warning') slots += '<span class="hslot warn"><span class="d"></span>hdd' + i + ': warning</span>';
-    else slots += '<span class="hslot warn"><span class="d"></span>hdd' + i + ': slot free</span>';
+    if (h && h.status === 'healthy' && h.capacityMB > 0){
+      hddHtml += '<div class="hdd connected"><div class="hname">HDD' + i + '</div><div class="hcap">' + esc(h.model || '') + '</div><div class="hcap">' + fmtSizeMB(h.capacityMB) + '</div><span class="hst healthy">Connected</span></div>';
+    } else if (h && h.status === 'warning'){
+      hddHtml += '<div class="hdd"><div class="hname">HDD' + i + '</div><div class="hcap">Warning</div><span class="hst warning">Warning</span></div>';
+    } else {
+      hddHtml += '<div class="hdd"><div class="hname">HDD' + i + '</div><div class="hcap">No disk</div><span class="hst empty">Empty</span></div>';
+    }
   }
-  html += '<div class="hddslots" style="margin-top:16px">' + (slots || '<span class="hslot">No storage data</span>') + '</div>';
-  html += '</div>';
+  const ram = n.ram || {}, stor = n.storage || {};
+  const gauge = (p, label, sub) => '<div class="gauge"><div class="ring" style="--p:' + (p == null ? 0 : p) + ';--c:' + ringColor(p) + '"><span>' + (p == null ? 'N/A' : p + '%') + '</span></div><div class="glabel">' + label + '</div><div class="gsub">' + sub + '</div></div>';
+  let g = '<div class="gaugeblock">' +
+    gauge(n.cpuUsage, 'CPU Usage', n.cpuUsage == null ? '--' : n.cpuUsage + '%') +
+    gauge(ram.percent, 'RAM Usage', fmtSizeMB(ram.usedMB) + ' / ' + fmtSizeMB(ram.totalMB)) +
+    gauge(stor.percent, 'Storage Usage', fmtSizeMB((stor.totalMB||0) - (stor.freeMB||0)) + ' / ' + fmtSizeMB(stor.totalMB)) +
+  '</div>';
+  html += '<div class="monrow"><div class="hddblock"><div class="hddtitle">HDD / Storage <b>' + connected + ' / ' + total + ' CONNECTED</b></div><div class="hddgrid">' + (hddHtml || '<div class="empty">No storage data</div>') + '</div></div>' + g + '</div>';
   html += '<div class="camwrap">' +
     '<div class="camnav">' +
       navBtn('all','All') + navBtn('online','Online') + navBtn('offline','Offline') + navBtn('recissue','Recording Issues') +
@@ -411,6 +435,7 @@ function backHome(){
   document.getElementById('nvrView').style.display = 'none';
   document.getElementById('main').style.display = '';
   document.getElementById('refreshFab').classList.remove('show');
+  document.body.classList.remove('nvr-mode');
   CUR_NVR = null;
 }
 async function reloadNow(){ await load(); }
