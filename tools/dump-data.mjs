@@ -63,10 +63,19 @@ async function getJson(cookie, p) {
     let cameras = null
     try { cameras = await getJson(cookie, '/api/cameras-summary') } catch (e) { console.warn('[dump] cameras:', e.message) }
 
-    const payload = { generated: Date.now(), devices: data.routers || [], cameras }
+    // Per-NVR detail (storage, HDD slots, RAM, uptime, firmware, cameras)
+    const devices = data.routers || []
+    const nvrs = {}
+    for (const dev of devices) {
+      if (!dev.hasNvr) continue
+      try { nvrs[dev.id] = await getJson(cookie, '/api/nvr?id=' + encodeURIComponent(dev.id)) }
+      catch (e) { console.warn('[dump] nvr ' + dev.id + ': ' + e.message) }
+    }
+
+    const payload = { generated: Date.now(), devices, cameras, nvrs }
     fs.mkdirSync(path.dirname(OUT), { recursive: true })
     fs.writeFileSync(OUT, JSON.stringify(payload))
-    console.log('[dump] wrote ' + OUT + '  devices=' + (payload.devices.length) + ' cameras=' + (cameras ? cameras.total : 'n/a'))
+    console.log('[dump] wrote ' + OUT + '  devices=' + devices.length + ' cameras=' + (cameras ? cameras.total : 'n/a') + ' nvrs=' + Object.keys(nvrs).length)
     process.exit(0)
   } catch (e) {
     console.error('[dump] failed:', e.message || e)

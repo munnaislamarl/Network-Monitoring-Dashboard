@@ -84,6 +84,34 @@
   .dot.up { background:var(--ok); }
   .dot.down { background:var(--off); }
   .scroll { max-height:340px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
+  /* ---- NVR detail ---- */
+  .nvrhead { margin-bottom:16px; }
+  .nvrtitle { font-size:20px; font-weight:700; }
+  .nvrtags { display:flex; gap:8px; margin-top:7px; }
+  .nvrchip { font-size:11px; font-weight:700; padding:3px 9px; border-radius:6px; background:rgba(74,143,224,.14); color:var(--acc); }
+  .nvrchip.brand { background:rgba(74,143,224,.1); color:#c9d4ea; }
+  .nvrsub { font-size:12px; color:var(--mut); margin-top:7px; font-family:Consolas,monospace; }
+  .nvrrow { display:flex; gap:18px; flex-wrap:wrap; align-items:stretch; margin-bottom:16px; }
+  .gauges { display:flex; gap:26px; align-items:center; justify-content:center; background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:16px 22px; }
+  .gauge { text-align:center; }
+  .ring { --p:0; --c:var(--acc); width:76px; height:76px; border-radius:50%; background:conic-gradient(var(--c) calc(var(--p)*1%), rgba(255,255,255,.09) 0); display:flex; align-items:center; justify-content:center; position:relative; margin:0 auto; }
+  .ring::before { content:''; position:absolute; inset:8px; background:var(--card); border-radius:50%; }
+  .ring span { position:relative; font-size:15px; font-weight:700; }
+  .glbl { font-size:10px; color:var(--mut); text-transform:uppercase; letter-spacing:.5px; margin-top:8px; }
+  .nvrright { flex:1; min-width:280px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; justify-content:flex-end; }
+  .kv { text-align:center; }
+  .kv .l { font-size:10px; color:var(--mut); text-transform:uppercase; letter-spacing:.4px; }
+  .kv .v { font-size:15px; font-weight:700; margin-top:4px; }
+  .bell { display:inline-flex; align-items:center; gap:6px; background:rgba(231,76,60,.14); color:var(--off); border-radius:8px; padding:8px 12px; font-weight:700; }
+  .pillhealthy { background:rgba(46,204,113,.16); color:var(--ok); border:1px solid rgba(46,204,113,.4); border-radius:8px; padding:8px 14px; font-weight:700; letter-spacing:.5px; }
+  .pillalert { background:rgba(231,76,60,.16); color:var(--off); border:1px solid rgba(231,76,60,.4); border-radius:8px; padding:8px 14px; font-weight:700; letter-spacing:.5px; }
+  .hddslots { display:flex; flex-wrap:wrap; gap:10px; }
+  .hslot { display:inline-flex; align-items:center; gap:7px; font-size:12px; padding:7px 13px; border-radius:20px; border:1px solid var(--line); color:var(--mut); }
+  .hslot .d { width:8px; height:8px; border-radius:50%; background:var(--mut); }
+  .hslot.ok { border-color:rgba(46,204,113,.5); color:#d7f5e5; }
+  .hslot.ok .d { background:var(--ok); box-shadow:0 0 6px var(--ok); }
+  .hslot.warn { border-color:rgba(243,156,18,.5); color:#fde3b5; }
+  .hslot.warn .d { background:var(--warn); box-shadow:0 0 6px var(--warn); }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--card); border:1px solid var(--line); color:var(--txt); padding:10px 16px; border-radius:10px; font-size:13px; display:none; z-index:60; box-shadow:0 12px 30px rgba(0,0,0,.5); }
   .toast.show { display:block; }
 </style>
@@ -118,7 +146,7 @@
 <div class="foot">Data refreshed via GitHub Actions every 5 min &middot; AKIJ Resource Network Monitoring</div>
 
 <div class="ov" id="detailOv" onclick="if(event.target===this)closeDetail()">
-  <div class="modal">
+  <div class="modal" style="max-width:1000px">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <h3 id="detailTitle" style="margin:0">Device</h3>
       <button class="btn" style="background:var(--line)" onclick="closeDetail()">Close</button>
@@ -217,6 +245,7 @@ function render(){
 function openDetail(id){
   const d = (DATA.devices||[]).find(x => x.id === id);
   if (!d) return;
+  if (d.hasNvr && DATA.nvrs && DATA.nvrs[id]) { openNvrDetail(DATA.nvrs[id]); return; }
   document.getElementById('detailTitle').textContent = d.name;
   const ram = ramPct(d);
   let meta = '<div class="meta">';
@@ -240,6 +269,56 @@ function openDetail(id){
   document.getElementById('detailOv').classList.add('show');
 }
 function closeDetail(){ document.getElementById('detailOv').classList.remove('show'); }
+
+// ---- NVR detail view ----
+function fmtUptime(sec){
+  if (sec == null) return '--';
+  let s = Math.floor(sec), d = Math.floor(s/86400); s -= d*86400;
+  const h = Math.floor(s/3600), m = Math.floor((s - h*3600)/60);
+  if (d > 0) return d + 'd ' + h + 'h';
+  if (h > 0) return h + 'h ' + m + 'm';
+  return m + 'm';
+}
+function fmtSize(mb){
+  if (mb == null || isNaN(mb) || mb <= 0) return '0GB';
+  if (mb >= 1048576) return (mb/1048576).toFixed(2) + 'TB';
+  if (mb >= 1024) return Math.round(mb/1024) + 'GB';
+  return Math.round(mb) + 'MB';
+}
+function ringColor(p){ return p == null ? '#3a4357' : p >= 90 ? '#e74c3c' : p >= 70 ? '#f39c12' : '#2ecc71'; }
+function ringHtml(p, label){
+  const v = (p == null) ? 'N/A' : p + '%';
+  return '<div class="gauge"><div class="ring" style="--p:' + (p == null ? 0 : p) + ';--c:' + ringColor(p) + '"><span>' + v + '</span></div><div class="glbl">' + label + '</div></div>';
+}
+function openNvrDetail(n){
+  document.getElementById('detailTitle').textContent = n.name || 'NVR';
+  const alerts = (n.offlineCount || 0) + ((n.hdds||[]).filter(h => h.status && h.status !== 'healthy').length);
+  let html = '<div class="nvrhead">' +
+    '<div class="nvrtitle">' + esc(n.name) + '</div>' +
+    '<div class="nvrtags"><span class="nvrchip">' + esc(n.model || '--') + '</span><span class="nvrchip brand">' + esc((n.brand || '').toUpperCase()) + '</span></div>' +
+    '<div class="nvrsub">' + esc(n.ip) + ':' + esc(n.port) + '</div></div>';
+  html += '<div class="nvrrow">' +
+    '<div class="gauges">' + ringHtml(n.cpuUsage, 'CPU') + ringHtml(n.ram ? n.ram.percent : null, 'RAM') + ringHtml(n.storage ? n.storage.percent : null, 'STORAGE') + '</div>' +
+    '<div class="nvrright">' +
+      '<span class="bell">&#128276; ' + alerts + '</span>' +
+      '<div class="kv"><div class="l">Uptime</div><div class="v">' + fmtUptime(n.uptimeSeconds) + '</div></div>' +
+      '<div class="kv"><div class="l">Firmware</div><div class="v" style="font-size:13px">' + esc(n.firmwareVersion || '--') + '</div></div>' +
+      '<div class="kv"><div class="l">Updated</div><div class="v" style="font-size:13px">' + new Date(n.updated || Date.now()).toLocaleTimeString() + '</div></div>' +
+      (alerts > 0 ? '<span class="pillalert">' + alerts + ' alerts</span>' : '<span class="pillhealthy">HEALTHY</span>') +
+    '</div></div>';
+  const total = n.totalSlots || (n.hdds && n.hdds.length ? Math.max.apply(null, n.hdds.map(h => h.id)) : 0);
+  const byId = {}; (n.hdds || []).forEach(h => byId[h.id] = h);
+  let slots = '';
+  for (let i = 1; i <= total; i++){
+    const h = byId[i];
+    if (h && h.status === 'healthy' && h.capacityMB > 0) slots += '<span class="hslot ok"><span class="d"></span>hdd' + i + ': ' + fmtSize(h.freeMB) + ' free / ' + fmtSize(h.capacityMB) + '</span>';
+    else if (h && h.status === 'warning') slots += '<span class="hslot warn"><span class="d"></span>hdd' + i + ': warning</span>';
+    else slots += '<span class="hslot warn"><span class="d"></span>hdd' + i + ': slot free</span>';
+  }
+  html += '<div class="hddslots">' + (slots || '<span class="hslot">No storage data</span>') + '</div>';
+  document.getElementById('detailBody').innerHTML = html;
+  document.getElementById('detailOv').classList.add('show');
+}
 function doSearch(){ searchQ = document.getElementById('search').value.trim(); render(); }
 function addNote(){
   const t = document.getElementById('toast');
