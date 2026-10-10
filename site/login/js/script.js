@@ -1,5 +1,6 @@
 /* =========================================================
    Login page — particle network background + form logic
+   (Sign in + Request access via Google Apps Script backend)
    Plain vanilla JS (no libraries).
    ========================================================= */
 (function () {
@@ -77,7 +78,6 @@
     if (!running) return;
     ctx.clearRect(0, 0, w, h);
 
-    /* ---- 2) update dots ---- */
     for (let i = pts.length - 1; i >= 0; i--) {
       const p = pts[i];
 
@@ -117,14 +117,12 @@
         }
       }
 
-      /* wrap edges (no bounce) */
       if (p.x < 0) p.x += w;
       else if (p.x > w) p.x -= w;
       if (p.y < 0) p.y += h;
       else if (p.y > h) p.y -= h;
     }
 
-    /* ---- 3) cursor glow ---- */
     if (mouse.on) {
       const g = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 170);
       g.addColorStop(0, "rgba(120,145,255,0.22)");
@@ -136,7 +134,6 @@
       ctx.fill();
     }
 
-    /* ---- 4) ripples ---- */
     for (let i = ripples.length - 1; i >= 0; i--) {
       const rp = ripples[i];
       rp.r += 3.0;
@@ -151,7 +148,6 @@
       ctx.stroke();
     }
 
-    /* ---- 5) links between dots ---- */
     ctx.lineWidth = 1;
     for (let i = 0; i < pts.length; i++) {
       const a = pts[i];
@@ -174,7 +170,6 @@
       }
     }
 
-    /* ---- 6) cursor links ---- */
     if (mouse.on) {
       for (let i = 0; i < pts.length; i++) {
         const p = pts[i];
@@ -190,7 +185,6 @@
       }
     }
 
-    /* ---- 7) draw nodes ---- */
     for (let i = 0; i < pts.length; i++) {
       const p = pts[i];
       const lf = p.life === Infinity ? 1 : p.life;
@@ -209,7 +203,6 @@
     raf = requestAnimationFrame(frame);
   }
 
-  /* ---- events ---- */
   window.addEventListener("resize", resize);
 
   window.addEventListener("mousemove", (e) => {
@@ -230,13 +223,11 @@
   );
   window.addEventListener("touchend", () => { mouse.on = false; });
 
-  /* click on the screen (but not the card) spawns dots + a ripple */
   document.addEventListener("click", (e) => {
     if (e.target.closest && e.target.closest(".card")) return;
     spawnClick(e.clientX, e.clientY);
   });
 
-  /* only run while the login screen is visible */
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       running = false;
@@ -250,7 +241,28 @@
   start();
 
   /* ---------------------------------------------------------
-     PASSWORD VISIBILITY TOGGLE
+     TAB SWITCHING  (Sign In ⇄ Request Access)
+     --------------------------------------------------------- */
+  window.switchTab = function (name) {
+    const signinTab = document.getElementById("tabSignin");
+    const reqTab = document.getElementById("tabRequest");
+    const signinForm = document.getElementById("login-form");
+    const reqForm = document.getElementById("request-form");
+    if (name === "request") {
+      signinTab.classList.remove("active");
+      reqTab.classList.add("active");
+      signinForm.classList.remove("show");
+      reqForm.classList.add("show");
+    } else {
+      reqTab.classList.remove("active");
+      signinTab.classList.add("active");
+      reqForm.classList.remove("show");
+      signinForm.classList.add("show");
+    }
+  };
+
+  /* ---------------------------------------------------------
+     PASSWORD VISIBILITY TOGGLE (sign in)
      --------------------------------------------------------- */
   const pw = document.getElementById("password");
   const eye = document.getElementById("eye");
@@ -264,6 +276,32 @@
   });
 
   /* ---------------------------------------------------------
+     APPS SCRIPT BACKEND
+     --------------------------------------------------------- */
+  const APP_URL = "https://script.google.com/macros/s/AKfycbwjB4K1ILtmX7O30oKD3OnxHyvnc_o5T8DuvXs3HN0CgYuwD_ZwZY_TXNf-jwMJyC4snQ/exec";
+
+  async function callApp(lib) {
+    const r = await fetch(APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(lib),
+      redirect: "follow"
+    });
+    const txt = await r.text();
+    let j = null;
+    try { j = JSON.parse(txt); } catch (e) { throw new Error("Server response was not valid JSON."); }
+    return j;
+  }
+
+  const SESSION_KEY = "nmc_session";
+  const USER_KEY = "nmc_user";
+
+  // already logged in? straight to the dashboard
+  try {
+    if (localStorage.getItem(SESSION_KEY)) window.location.replace("../");
+  } catch (e) {}
+
+  /* ---------------------------------------------------------
      SIGN IN
      --------------------------------------------------------- */
   const form = document.getElementById("login-form");
@@ -271,7 +309,7 @@
   const err = document.getElementById("error");
   const btn = document.getElementById("submit");
 
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
     err.textContent = "";
 
@@ -284,26 +322,72 @@
 
     btn.disabled = true;
     btn.textContent = "Signing in…";
-
-    fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: username, password: password })
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.ok) {
-          window.location.href = "/";
-        } else {
-          btn.disabled = false;
-          btn.textContent = "Sign in";
-          err.textContent = (data && data.error) || "Invalid username or password.";
-        }
-      })
-      .catch(() => {
+    try {
+      const j = await callApp({ action: "login", username: username, password: password });
+      if (j && j.ok) {
+        try {
+          localStorage.setItem(SESSION_KEY, j.session);
+          localStorage.setItem(USER_KEY, JSON.stringify(j.user || {}));
+        } catch (e2) {}
+        window.location.replace("../");
+      } else {
+        err.textContent = (j && j.error) || "Invalid username or password.";
         btn.disabled = false;
         btn.textContent = "Sign in";
-        err.textContent = "Unable to reach the server. Please try again.";
+      }
+    } catch (e) {
+      err.textContent = "Unable to reach the server. Please try again.";
+      btn.disabled = false;
+      btn.textContent = "Sign in";
+    }
+  });
+
+  /* ---------------------------------------------------------
+     REQUEST ACCESS
+     --------------------------------------------------------- */
+  const reqForm = document.getElementById("request-form");
+  const rqErr = document.getElementById("rqError");
+  const rqBtn = document.getElementById("rqSubmit");
+
+  reqForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    rqErr.textContent = "";
+
+    const username = document.getElementById("rqUsername").value.trim();
+    const displayName = document.getElementById("rqDisplay").value.trim();
+    const password = document.getElementById("rqPassword").value;
+    const confirm = document.getElementById("rqConfirm").value;
+    const note = document.getElementById("rqNote").value.trim();
+
+    if (!username || !password) { rqErr.textContent = "Username and password are required."; return; }
+    if (password.length < 4) { rqErr.textContent = "Password must be at least 4 characters."; return; }
+    if (password !== confirm) { rqErr.textContent = "Passwords do not match."; return; }
+
+    rqBtn.disabled = true;
+    rqBtn.textContent = "Sending…";
+    try {
+      const j = await callApp({
+        action: "requestAccess",
+        data: { username: username, displayName: displayName, password: password, note: note }
       });
+      if (j && j.ok) {
+        rqErr.classList.add("success");
+        rqErr.textContent = "Request sent! Admin অনুমোদনের পর এই username দিয়ে login করতে পারবেন।";
+        ["rqUsername", "rqDisplay", "rqPassword", "rqConfirm", "rqNote"].forEach((id) => {
+          const el = document.getElementById(id); if (el) el.value = "";
+        });
+        rqBtn.disabled = false;
+        rqBtn.textContent = "Send Request";
+        setTimeout(() => { rqErr.classList.remove("success"); switchTab("signin"); }, 5000);
+      } else {
+        rqErr.textContent = (j && j.error) || "Request failed. Please try again.";
+        rqBtn.disabled = false;
+        rqBtn.textContent = "Send Request";
+      }
+    } catch (e) {
+      rqErr.textContent = "Unable to reach the server. Please try again.";
+      rqBtn.disabled = false;
+      rqBtn.textContent = "Send Request";
+    }
   });
 })();

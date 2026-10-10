@@ -6,7 +6,7 @@
   <meta name="description" content="Network Operation Center — secure sign in" />
   <title>Sign In — Network Operation Center</title>
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="icon" href="assets/akij-essential-logo.jpg" type="image/jpeg" />
+  <link rel="icon" href="../assets/akij-essential-logo.jpg" type="image/jpeg" />
 </head>
 <body>
   <div class="screen">
@@ -17,7 +17,12 @@
       <div class="card">
         <div class="topbar"></div>
 
-        <form id="login-form" class="form" novalidate>
+        <div class="tabs">
+          <button type="button" class="tab active" id="tabSignin" onclick="switchTab('signin')">Sign In</button>
+          <button type="button" class="tab" id="tabRequest" onclick="switchTab('request')">Request Access</button>
+        </div>
+
+        <form id="login-form" class="form show" novalidate>
           <div class="logo" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor"
                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -65,6 +70,59 @@
           <button id="submit" class="btn" type="submit">Sign in</button>
 
           <p class="hint">Secured access — IT Infrastructure &amp; Security</p>
+        </form>
+
+        <form id="request-form" class="form" novalidate>
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M16 10a4 4 0 0 1-8 0"></path>
+            </svg>
+          </div>
+
+          <div class="head">
+            <h1>Request Access</h1>
+            <p>Send a request — an admin will approve it</p>
+          </div>
+
+          <div class="selectrow">
+            <div class="field">
+              <label for="rqUsername">Username</label>
+              <input id="rqUsername" type="text" placeholder="e.g. operator1"
+                     autocomplete="username" />
+            </div>
+            <div class="field">
+              <label for="rqDisplay">Display Name</label>
+              <input id="rqDisplay" type="text" placeholder="e.g. Main Gate Operator"
+                     autocomplete="name" />
+            </div>
+          </div>
+
+          <div class="selectrow">
+            <div class="field">
+              <label for="rqPassword">Password</label>
+              <input id="rqPassword" type="password" placeholder="Choose a password"
+                     autocomplete="new-password" />
+            </div>
+            <div class="field">
+              <label for="rqConfirm">Confirm Password</label>
+              <input id="rqConfirm" type="password" placeholder="Repeat password"
+                     autocomplete="new-password" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="rqNote">Note (optional)</label>
+            <textarea id="rqNote" placeholder="Department / reason, e.g. Security Team — Gate 3"></textarea>
+          </div>
+
+          <p id="rqError" class="error" role="alert"></p>
+
+          <button id="rqSubmit" class="btn" type="submit">Send Request</button>
+
+          <p class="hint">আপনার role হবে normal user। <br />Admin অনুমোদনের পরই login করতে পারবেন।</p>
         </form>
       </div>
 

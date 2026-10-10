@@ -1,7 +1,7 @@
 {
   "name": "network-monitoring-dashboard",
   "version": "1.0.0",
-  "description": "Self-hosted NOC dashboard for SNMP + Hikvision NVR monitoring",
+  "description": "NOC dashboard (GitHub Pages UI + Google Sheets storage, polled by GitHub Actions)",
   "main": "dashboard.js",
   "scripts": {
     "start": "node dashboard.js"

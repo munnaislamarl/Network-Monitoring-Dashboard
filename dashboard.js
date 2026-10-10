@@ -9,40 +9,18 @@ const COMMUNITY = process.env.SNMP_COMMUNITY || 'arlzabbix';
 const PORT = 161;
 const POLL_MS = 5000;
 const GRACE_MS = 60000;
-const HISTORY_SAMPLE_MS = 60000;
-const HISTORY_MAX = 2000;
-const HIST_DIR = path.join(__dirname, 'history');
 const PORT_HTTP = process.env.PORT || 8080;
 
-// Device list. The real routers.json is git-ignored (may contain credentials);
-// if it's missing we fall back to routers.example.json or an empty list.
-const ROUTERS_FILE = path.join(__dirname, 'routers.json');
+// Source of truth = Google Sheets (Devices / Users / Cams tabs).
+// No local config files: SHEETS_API_URL + SHEETS_TOKEN are set by the
+// GitHub Actions workflow (./.github/workflows/monitor.yml).
 let routers = [];
-try {
-  routers = JSON.parse(fs.readFileSync(ROUTERS_FILE, 'utf8'));
-} catch (e) {
-  try {
-    routers = JSON.parse(fs.readFileSync(path.join(__dirname, 'routers.example.json'), 'utf8'));
-    console.warn('[config] routers.json missing — using routers.example.json (copy it to routers.json and edit).');
-  } catch (e2) {
-    routers = [];
-    console.warn('[config] no routers.json found — starting with an empty device list.');
-  }
-}
+let CAM_META = {};
 
-// ----- Authentication config -----
-// auth.json shape: { users: [ { username, password, displayName, role } ] }
-// A legacy single-user object ({ username, password, ... }) is auto-migrated.
-const AUTH_FILE = path.join(__dirname, 'auth.json');
-let AUTH = { users: [{ username: 'admin', password: 'admin123', displayName: 'Admin', role: 'admin' }] };
-try {
-  const raw = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf8'));
-  if (raw && Array.isArray(raw.users)) AUTH = raw;
-  else if (raw && raw.username) AUTH = { users: [{ username: raw.username, password: raw.password || 'admin123', displayName: raw.displayName || raw.username, role: raw.role || 'admin' }] };
-} catch (e) {}
-if (!Array.isArray(AUTH.users) || !AUTH.users.length) AUTH = { users: [{ username: 'admin', password: 'admin123', displayName: 'Admin', role: 'admin' }] };
+// ---- Auth config (Users tab) ----
+let AUTH = { users: [] };
 
-function saveAuth() { try { fs.writeFileSync(AUTH_FILE, JSON.stringify(AUTH, null, 2)); } catch (e) {} pushUsersToSheet(); }
+function saveAuth() { pushUsersToSheet(); }
 function findUser(username) { return AUTH.users.find(u => u.username.toLowerCase() === String(username || '').toLowerCase()) || null; }
 function publicUser(u) { return { username: u.username, displayName: u.displayName || u.username, role: u.role || 'user' }; }
 function adminCount() { return AUTH.users.filter(u => (u.role || 'user') === 'admin').length; }
@@ -50,14 +28,19 @@ function invalidateUserSessions(username) {
   for (const [tok, s] of sessions) if (s.username === username) sessions.delete(tok);
 }
 
-// ----- Google Sheets store (optional; used when SHEETS_API_URL is set) -----
+// ----- Google Sheets store (the only config source; SHEETS_API_URL set by Actions) -----
 async function loadSheetConfig() {
-  if (!gsheets.enabled()) return false;
+  if (!gsheets.enabled()) {
+    console.warn('[config] SHEETS_API_URL not set — starting with an empty device list. Set it via the GitHub Actions secrets (SHEETS_API_URL/SHEETS_TOKEN).');
+    return false;
+  }
   try {
     const devs = gsheets.devicesFromRows(await gsheets.readTab('Devices'));
     if (devs.length) { routers = devs; console.log('[gsheets] loaded ' + devs.length + ' devices'); }
     const users = gsheets.usersFromRows(await gsheets.readTab('Users'));
     if (users.length) { AUTH = { users }; console.log('[gsheets] loaded ' + users.length + ' users'); }
+    CAM_META = gsheets.camMetaFromRows(await gsheets.readTab('Cams'));
+    console.log('[gsheets] loaded ' + Object.keys(CAM_META).length + ' camera NVRs from Cams tab');
     return true;
   } catch (e) { console.warn('[gsheets] load failed: ' + e.message); return false; }
 }
@@ -515,56 +498,11 @@ function serialize() {
   }));
   cachedJson = JSON.stringify({ generated: Date.now(), pollMs: POLL_MS, routers: payload });
 }
-function saveHistory(r) {
-  if (r.type === 'ping' || !r.interfaces.length) return;
-  try {
-    const entry = { t: Date.now(), ifs: {} };
-    for (const it of r.interfaces) {
-      if (it.rx != null && it.tx != null) entry.ifs[it.idx] = { rx: it.rx, tx: it.tx };
-    }
-    if (Object.keys(entry.ifs).length === 0) return;
-    if (!fs.existsSync(HIST_DIR)) fs.mkdirSync(HIST_DIR, { recursive: true });
-    const fp = path.join(HIST_DIR, r.id + '.json');
-    let arr = [];
-    try { arr = JSON.parse(fs.readFileSync(fp, 'utf8')); } catch (e) { arr = []; }
-    arr.push(entry);
-    if (arr.length > HISTORY_MAX) arr = arr.slice(arr.length - HISTORY_MAX);
-    fs.writeFileSync(fp, JSON.stringify(arr));
-  } catch (e) {}
-}
+// Traffic history lives in Google Sheets (State + History tabs); dump-data.mjs
+// samples rates from there each run. No local history files.
 
 function prettyRate(n){ return n==null?null:fmtBps(n); }
 function prettyNum(n){ return n==null?null:fmtBytes(n); }
-
-function readHistory(id) {
-  const fp = path.join(HIST_DIR, id + '.json');
-  try { return JSON.parse(fs.readFileSync(fp, 'utf8')); } catch (e) { return []; }
-}
-
-function historySeries(id, ifaceIdx, seconds) {
-  const arr = readHistory(id);
-  const since = Date.now() - seconds * 1000;
-  const pts = arr.filter(e => e.t >= since && e.ifs && e.ifs[ifaceIdx]);
-  const out = [];
-  const STEP = pts.length > 500 ? Math.ceil(pts.length / 500) : 1;
-  let prev = null;
-  for (let i = 0; i < pts.length; i++) {
-    const e = pts[i];
-    const cur = e.ifs[ifaceIdx];
-    if (prev) {
-      const dt = (e.t - prev.t) / 1000;
-      if (dt > 0) {
-        let drx = cur.rx - prev.rx; if (drx < 0) drx += 4294967296;
-        let dtx = cur.tx - prev.tx; if (dtx < 0) dtx += 4294967296;
-        if (i % STEP === 0) {
-          out.push({ t: e.t, rx: (drx * 8) / dt, tx: (dtx * 8) / dt });
-        }
-      }
-    }
-    prev = { t: e.t, rx: cur.rx, tx: cur.tx };
-  }
-  return out;
-}
 
 /* =====================================================================
    Hikvision NVR (ISAPI) camera discovery
@@ -665,12 +603,13 @@ function parseHddList(xml) {
   return out;
 }
 
-const CAMERA_META_FILE = path.join(__dirname, 'camera-meta.json');
-function loadCameraMeta() {
-  try { return JSON.parse(fs.readFileSync(CAMERA_META_FILE, 'utf8')); } catch (e) { return {}; }
-}
+// Camera meta (alias / hidden / source) — source of truth = Cams tab.
+function loadCameraMeta() { return CAM_META; }
 function saveCameraMeta(m) {
-  try { fs.writeFileSync(CAMERA_META_FILE, JSON.stringify(m, null, 2)); } catch (e) {}
+  CAM_META = m;
+  if (gsheets.enabled()) {
+    gsheets.replaceTab('Cams', gsheets.camMetaToRows(m)).catch(e => console.warn('[gsheets] push cams: ' + e.message));
+  }
 }
 
 async function getNvrCameras(rs) {
@@ -1007,36 +946,19 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
-  if (req.url === '/device' || (req.url && req.url.indexOf('/device?') === 0)) {
-    if (!isAuthed(req)) {
-      res.writeHead(302, { 'Location': '/login/' });
-      res.end();
-      return;
-    }
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(fs.readFileSync(path.join(__dirname, 'public', 'device.html')));
-    return;
-  }
-  if (req.url === '/nvr' || (req.url && req.url.indexOf('/nvr?') === 0)) {
-    if (!isAuthed(req)) {
-      res.writeHead(302, { 'Location': '/login/' });
-      res.end();
-      return;
-    }
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(fs.readFileSync(path.join(__dirname, 'public', 'nvr.html')));
+  // /device and /nvr legacy pages were removed — the UI is the static GitHub
+  // Pages site in ./site (auth + device add go through Apps Script directly).
+  // These URLs are gone:
+  if (req.url === '/device' || req.url === '/nvr') {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not found');
     return;
   }
   if (req.url && req.url.indexOf('/api/history') === 0 && req.method === 'GET') {
-    const u = new URL(req.url, 'http://x');
-    const id = u.searchParams.get('id');
-    const ifaceIdx = parseInt(u.searchParams.get('iface'), 10);
-    const seconds = Math.min(parseInt(u.searchParams.get('range'), 10) || 86400, 86400 * 3);
-    const rs = state.find(s => s.id === id);
-    const pts = historySeries(id, ifaceIdx, seconds);
-    const name = rs ? (rs.interfaces.find(i => i.idx === ifaceIdx) || {}).name : null;
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ id, iface: ifaceIdx, name, seconds, points: pts }));
+    // Legacy endpoint removed — traffic history comes from the Google Sheet
+    // (dump-data.mjs writes site/history.json) and is served by GitHub Pages.
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not found');
     return;
   }
   if (req.url === '/api/remove' && req.method === 'POST') {
@@ -1055,48 +977,9 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
-  // Login page (public)
-  if (req.url === '/login') {
-    res.writeHead(302, { 'Location': '/login/' });
-    res.end();
-    return;
-  }
-  if (req.url === '/login/') {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(fs.readFileSync(path.join(__dirname, 'public', 'login', 'index.html')));
-    return;
-  }
-  // Login static assets (css/js/images) — public
-  if (req.url && req.url.indexOf('/login/') === 0) {
-    const f = req.url.replace(/^\/login\//, '');
-    const fp = path.join(__dirname, 'public', 'login', f);
-    if (fs.existsSync(fp) && fs.statSync(fp).isFile()) {
-      const ext = path.extname(fp);
-      const type = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' }[ext] || 'text/plain';
-      res.writeHead(200, { 'Content-Type': type });
-      res.end(fs.readFileSync(fp));
-    } else {
-      res.writeHead(404); res.end('Not found');
-    }
-    return;
-  }
-
-  // Main dashboard (protected)
-  let file = req.url === '/' ? 'index.html' : req.url.replace(/^\//, '');
-  if (!isAuthed(req)) {
-    res.writeHead(302, { 'Location': '/login/' });
-    res.end();
-    return;
-  }
-  const fp = path.join(__dirname, 'public', file);
-  if (fs.existsSync(fp) && fs.statSync(fp).isFile()) {
-    const ext = path.extname(fp);
-    const type = { '.html': 'text/html', '.js': 'application/javascript', '.css': 'text/css' }[ext] || 'text/plain';
-    res.writeHead(200, { 'Content-Type': type });
-    res.end(fs.readFileSync(fp));
-  } else {
-    res.writeHead(404); res.end('Not found');
-  }
+  // Legacy self-hosted UI is gone — the dashboard is served from GitHub Pages.
+  res.writeHead(404, { 'Content-Type': 'text/plain' });
+  res.end('Not found. The dashboard UI lives on GitHub Pages; this server only serves API data.');
 });
 
 function addDevice(d) {
@@ -1110,7 +993,6 @@ function addDevice(d) {
   };
   if (state.some(s => s.ip === ip)) throw new Error('IP already exists');
   routers.push(rec);
-  try { fs.writeFileSync(path.join(__dirname, 'routers.json'), JSON.stringify(routers, null, 2)); } catch (e) {}
   pushDevicesToSheet();
   state.push({
     id: rec.id, name: rec.name, isp: rec.isp, location: rec.location, ip: rec.ip,
@@ -1129,7 +1011,6 @@ function removeDevice(id) {
   state.splice(i, 1);
   const ri = routers.findIndex(r => r.id === id);
   if (ri >= 0) routers.splice(ri, 1);
-  try { fs.writeFileSync(path.join(__dirname, 'routers.json'), JSON.stringify(routers, null, 2)); } catch (e) {}
   pushDevicesToSheet();
 }
 
@@ -1146,9 +1027,6 @@ function removeDevice(id) {
     try { await pollAll(); } catch (e) { console.error('pollAll error', e); }
     serialize();
   }, POLL_MS);
-  setInterval(() => {
-    for (const rs of state) saveHistory(rs);
-  }, HISTORY_SAMPLE_MS);
 })();
 
 process.on('uncaughtException', (e) => {

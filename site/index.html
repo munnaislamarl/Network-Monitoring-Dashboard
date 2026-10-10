@@ -174,6 +174,27 @@
   .frow { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--card); border:1px solid var(--line); color:var(--txt); padding:10px 16px; border-radius:10px; font-size:13px; display:none; z-index:60; box-shadow:0 12px 30px rgba(0,0,0,.5); }
   .toast.show { display:block; }
+  /* ---- user / profile menu ---- */
+  .user { position:relative; cursor:pointer; }
+  .user:hover .uavatar { filter:brightness(1.1); }
+  .uchevs { color:var(--mut); font-size:12px; }
+  .profilemenu { display:none; position:absolute; right:0; top:calc(100% + 10px); background:var(--card); border:1px solid var(--line); border-radius:10px; padding:6px; min-width:200px; z-index:40; box-shadow:0 14px 34px rgba(0,0,0,.5); }
+  .profilemenu.show { display:block; }
+  .profilemenu .dd-head { padding:10px 12px 8px; border-bottom:1px solid var(--line); margin-bottom:4px; }
+  .profilemenu .dm-name { font-weight:600; font-size:13px; }
+  .profilemenu .dm-role { font-size:11px; color:var(--mut); margin-top:2px; }
+  .profilemenu button { display:flex; align-items:center; gap:9px; width:100%; text-align:left; background:transparent; border:none; color:var(--txt); padding:9px 12px; border-radius:7px; font-size:13px; cursor:pointer; }
+  .profilemenu button:hover { background:rgba(74,143,224,.14); }
+  .reqbadge { background:var(--off); color:#fff; border-radius:99px; padding:1px 7px; font-size:11px; font-weight:700; margin-left:auto; }
+  .tblbtn { background:var(--bg); border:1px solid var(--line); color:var(--txt); padding:5px 11px; border-radius:6px; font-size:12px; cursor:pointer; }
+  .tblbtn:hover { border-color:var(--acc); }
+  .tblbtn.ok { color:var(--ok); border-color:rgba(46,204,113,.4); }
+  .tblbtn.ok:hover { background:rgba(46,204,113,.12); }
+  .tblbtn.no { color:var(--off); border-color:rgba(231,76,60,.4); }
+  .tblbtn.no:hover { background:rgba(231,76,60,.12); }
+  .tblbtn.danger { color:var(--off); border-color:var(--off); }
+  .tblbtn.danger:hover { background:rgba(231,76,60,.12); }
+  .minisel { background:var(--bg); border:1px solid var(--line); color:var(--txt); padding:5px 8px; border-radius:6px; font-size:12px; outline:none; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -182,7 +203,9 @@
   <a class="brand" href="#" title="AKIJ Resource"><img src="assets/akij-essential-logo.jpg" alt="AKIJ Resource" class="brandlogo"></a>
   <div class="searchwrap homeonly">
     <span class="ic">&#128269;</span>
-    <input id="search" type="text" placeholder="Search Device by Name or IP" oninput="doSearch()">
+    <input id="search" type="text" placeholder="Search Device by Name or IP" name="device-search"
+           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+           aria-autocomplete="none" oninput="doSearch()">
   </div>
   <button class="btn addbtn homeonly" onclick="openAddDevice()">+ Add Device</button>
   <div class="chips end">
@@ -197,9 +220,17 @@
     <span class="chip live"><span class="livedot"></span>Live</span>
     <span class="chip morebtn" style="display:none;cursor:pointer">More &#9662;</span>
     <span class="chip homechip" style="opacity:.7">Updated <b id="stUpd">--</b></span>
-    <div class="user">
-      <div class="uavatar">M</div>
-      <div class="uinfo"><div class="uname">Munna</div><div class="urole">admin</div></div>
+    <div class="user" onclick="toggleProfile(event)">
+      <div class="uavatar" id="uAvatar" style="background:var(--acc)">?</div>
+      <div class="uinfo"><div class="uname" id="uName">--</div><div class="urole" id="uRole">user</div></div>
+      <span class="uchevs">&#9662;</span>
+      <div class="profilemenu" id="profileMenu">
+        <div class="dd-head"><div class="dm-name" id="dmName"></div><div class="dm-role" id="dmRole"></div></div>
+        <button onclick="openChangePw()">&#128273; Change Password</button>
+        <button id="menuUsers" onclick="openUserMgmt()" style="display:none">&#128101; User Management</button>
+        <button id="menuRequests" onclick="openRequests()" style="display:none">&#128279; Access Requests <span class="reqbadge" id="reqCount" style="display:none"></span></button>
+        <button onclick="doLogout()">&#128275; Sign out</button>
+      </div>
     </div>
   </div>
 </header>
@@ -230,36 +261,105 @@
 </div>
 
 <div class="ov" id="addOv" onclick="if(event.target===this)closeAddDevice()">
-  <div class="modal" style="max-width:560px">
+  <div class="modal" style="max-width:600px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <h3 style="margin:0">Add Device</h3>
       <button class="btn gray" onclick="closeAddDevice()">Close</button>
     </div>
-    <div class="frow">
-      <div class="fld"><label>ID</label><input id="adId" placeholder="e.g. ael-sw04"></div>
-      <div class="fld"><label>Name *</label><input id="adName" placeholder="e.g. AEL-SW04"></div>
+    <div class="fld">
+      <label>Device Type *</label>
+      <select id="adType" onchange="onTypeChange()">
+        <option value="router">Router (SNMP)</option>
+        <option value="switch">Network Switch (SNMP)</option>
+        <option value="nvr">NVR / CCTV (ping + ISAPI)</option>
+        <option value="attendance">Attendance / Ping Device</option>
+        <option value="other">Other (SNMP)</option>
+      </select>
     </div>
     <div class="frow">
-      <div class="fld"><label>ISP / Type</label><input id="adIsp" placeholder="e.g. Switch"></div>
-      <div class="fld"><label>Location</label><input id="adLoc" placeholder="e.g. FLOUR-CCR"></div>
+      <div class="fld"><label>Name *</label><input id="adName" placeholder="e.g. AEL-SW04" autocomplete="off"></div>
+      <div class="fld"><label>Location</label><input id="adLoc" placeholder="e.g. FLOUR-CCR" autocomplete="off"></div>
     </div>
     <div class="frow">
-      <div class="fld"><label>IP Address *</label><input id="adIp" placeholder="e.g. 103.102.42.59"></div>
-      <div class="fld"><label>Check Type</label><select id="adType"><option value="">SNMP</option><option value="ping">ping (NVR / ping)</option></select></div>
+      <div class="fld"><label>IP Address *</label><input id="adIp" placeholder="e.g. 103.102.42.59" autocomplete="off"></div>
+      <div class="fld"><label>Label / ISP</label><input id="adIsp" placeholder="auto-filled by type" autocomplete="off" oninput="document.getElementById('adIsp').dataset.edited='1'"></div>
     </div>
-    <div class="frow">
-      <div class="fld"><label>SNMP Port</label><input id="adSnmpPort" placeholder="default 161 (e.g. 16101)"></div>
-      <div class="fld"><label>NVR Port</label><input id="adNvrPort" placeholder="NVR only (e.g. 2581)"></div>
+    <div id="snmpFields" style="display:none">
+      <div class="frow">
+        <div class="fld"><label>SNMP Port</label><input id="adSnmpPort" placeholder="default 161 (e.g. 16101)" autocomplete="off"></div>
+        <div class="fld"></div>
+      </div>
     </div>
-    <div class="frow">
-      <div class="fld"><label>Device-User</label><input id="adUser" placeholder="NVR / ISAPI user"></div>
-      <div class="fld"><label>Device-Pass</label><input id="adPass" type="password"></div>
+    <div id="nvrFields" style="display:none">
+      <div class="frow">
+        <div class="fld"><label>NVR Port</label><input id="adNvrPort" placeholder="NVR only (e.g. 2581)" autocomplete="off"></div>
+        <div class="fld"><label>NVR Brand</label><input id="adNvrBrand" placeholder="e.g. hikvision" autocomplete="off"></div>
+      </div>
+      <div class="frow">
+        <div class="fld"><label>Device-User</label><input id="adUser" placeholder="NVR / ISAPI user" autocomplete="off"></div>
+        <div class="fld"><label>Device-Pass</label><input id="adPass" type="password" autocomplete="new-password"></div>
+      </div>
     </div>
     <div class="msg" id="adMsg" style="min-height:16px"></div>
     <div class="mbtns">
       <button class="btn gray" onclick="closeAddDevice()">Cancel</button>
       <button class="btn" onclick="submitAddDevice()">Add Device</button>
     </div>
+  </div>
+</div>
+
+<div class="ov" id="pwOv" onclick="if(event.target===this)closePw()">
+  <div class="modal" style="max-width:430px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 style="margin:0">Change Password</h3>
+      <button class="btn gray" onclick="closePw()">Close</button>
+    </div>
+    <div class="fld"><label>Current Password</label><input id="pwCur" type="password" autocomplete="current-password"></div>
+    <div class="frow">
+      <div class="fld"><label>New Password</label><input id="pwNew" type="password" autocomplete="new-password"></div>
+      <div class="fld"><label>Confirm New</label><input id="pwConfirm" type="password" autocomplete="new-password"></div>
+    </div>
+    <div class="msg" id="pwMsg" style="min-height:16px"></div>
+    <div class="mbtns">
+      <button class="btn gray" onclick="closePw()">Cancel</button>
+      <button class="btn" onclick="submitChangePw()">Update Password</button>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="usersOv" onclick="if(event.target===this)closeUsers()">
+  <div class="modal" style="max-width:820px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 style="margin:0">User Management</h3>
+      <button class="btn gray" onclick="closeUsers()">Close</button>
+    </div>
+    <div class="scroll" id="usersTable">Loading…</div>
+    <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+      <div style="font-weight:600;margin-bottom:10px" id="userFormTitle">Add User</div>
+      <div class="frow">
+        <div class="fld"><label>Username *</label><input id="uUsername" autocomplete="off"></div>
+        <div class="fld"><label>Display Name</label><input id="uDisplay" autocomplete="off"></div>
+      </div>
+      <div class="frow">
+        <div class="fld"><label>Password</label><input id="uPassword" type="password" placeholder="(blank = keep unchanged)" autocomplete="new-password"></div>
+        <div class="fld"><label>Role</label><select id="uRole"><option value="user">user</option><option value="admin">admin</option></select></div>
+      </div>
+      <div class="msg" id="userMsg" style="min-height:16px"></div>
+      <div class="mbtns">
+        <button class="btn gray" id="userCancelBtn" style="display:none" onclick="resetUserForm()">Cancel Edit</button>
+        <button class="btn" id="userSaveBtn" onclick="saveUser()">Add User</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="reqOv" onclick="if(event.target===this)closeRequests()">
+  <div class="modal" style="max-width:860px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 style="margin:0">Access Requests</h3>
+      <button class="btn gray" onclick="closeRequests()">Close</button>
+    </div>
+    <div class="scroll" id="reqBody">Loading…</div>
   </div>
 </div>
 
@@ -559,37 +659,275 @@ function backHome(){
 }
 async function reloadNow(){ await load(); }
 function doSearch(){ searchQ = document.getElementById('search').value.trim(); render(); }
-// ---- Add Device (writes to Google Sheet 'Devices' via Apps Script) ----
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwjB4K1ILtmX7O30oKD3OnxHyvnc_o5T8DuvXs3HN0CgYuwD_ZwZY_TXNf-jwMJyC4snQ/exec';
-var ADD_TOKEN = 'AELADDFWkyHt203zTJs7NbxDdOlKGp';
+// ---- Apps Script backend (auth + add device + admin) ----
+const APP_URL = 'https://script.google.com/macros/s/AKfycbwjB4K1ILtmX7O30oKD3OnxHyvnc_o5T8DuvXs3HN0CgYuwD_ZwZY_TXNf-jwMJyC4snQ/exec';
+const ADD_TOKEN = 'AELADDFWkyHt203zTJs7NbxDdOlKGp';
+const SESSION_KEY = 'nmc_session';
+const USER_KEY = 'nmc_user';
+let AUTH = null;
+
+function sess(){ try { return localStorage.getItem(SESSION_KEY); } catch(e){ return null; } }
+
+// Apps Script Web App-এ POST করে। জরুরি: Content-Type text/plain → CORS preflight নেই।
+async function callApp(lib){
+  const r = await fetch(APP_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(lib), redirect:'follow' });
+  const txt = await r.text();
+  let j = null;
+  try { j = JSON.parse(txt); } catch(e){ throw new Error('Server response was not valid JSON.'); }
+  return j;
+}
+
+function setUserUI(user){
+  const name = user.displayName || user.username || 'User';
+  document.getElementById('uName').textContent = name;
+  document.getElementById('uRole').textContent = user.role || 'user';
+  document.getElementById('uAvatar').textContent = name.charAt(0).toUpperCase();
+  document.getElementById('dmName').textContent = name;
+  document.getElementById('dmRole').textContent = 'Role: ' + (user.role || 'user');
+  const admin = (user.role === 'admin');
+  document.getElementById('menuUsers').style.display = admin ? 'block' : 'none';
+  document.getElementById('menuRequests').style.display = admin ? 'block' : 'none';
+  if (admin) loadReqCount();
+}
+function toggleProfile(e){
+  if (e) e.stopPropagation();
+  document.getElementById('profileMenu').classList.toggle('show');
+}
+document.addEventListener('click', () => {
+  const m = document.getElementById('profileMenu');
+  if (m) m.classList.remove('show');
+});
+async function doLogout(){
+  try { await callApp({ action:'logout', session:sess() }); } catch(e){}
+  try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(USER_KEY); } catch(e){}
+  window.location.replace('login/');
+}
+
+// ---- auth gate ----
+function gotoLogin(){ try { localStorage.removeItem(SESSION_KEY); } catch(e){} window.location.replace('login/'); }
+async function boot(){
+  const s = sess();
+  if (!s){ gotoLogin(); return; }
+  try {
+    const j = await callApp({ action:'me', session:s });
+    if (!j || !j.ok){ gotoLogin(); return; }
+    AUTH = j.user;
+    try { localStorage.setItem(USER_KEY, JSON.stringify(j.user)); } catch(e){}
+    setUserUI(j.user);
+    const el = document.getElementById('search'); if (el) el.value = '';
+    searchQ = '';
+    load();
+    setInterval(load, 60000);
+  } catch(e){
+    gotoLogin();
+  }
+}
+
+// ---- Change own password ----
+function openChangePw(){
+  ['pwCur','pwNew','pwConfirm'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const m = document.getElementById('pwMsg'); m.textContent = ''; m.style.color = '';
+  document.getElementById('pwOv').classList.add('show');
+}
+function closePw(){ document.getElementById('pwOv').classList.remove('show'); }
+async function submitChangePw(){
+  const cur = document.getElementById('pwCur').value;
+  const np = document.getElementById('pwNew').value;
+  const cf = document.getElementById('pwConfirm').value;
+  const m = document.getElementById('pwMsg');
+  if (!cur || !np){ m.style.color = 'var(--off)'; m.textContent = 'All fields are required.'; return; }
+  if (np !== cf){ m.style.color = 'var(--off)'; m.textContent = 'New passwords do not match.'; return; }
+  try {
+    const j = await callApp({ action:'changePassword', session:sess(), data:{ currentPassword: cur, newPassword: np } });
+    if (j && j.ok){ m.style.color = 'var(--ok)'; m.textContent = 'Password updated.'; setTimeout(closePw, 900); }
+    else { m.style.color = 'var(--off)'; m.textContent = 'Error: ' + ((j && j.error) || 'failed'); }
+  } catch(e){ m.style.color = 'var(--off)'; m.textContent = 'Error: ' + e.message; }
+}
+
+// ---- User management (admin) ----
+let usersCache = [];
+let editingUser = null;
+function openUserMgmt(){
+  resetUserForm();
+  document.getElementById('userMsg').textContent = '';
+  document.getElementById('userMsg').style.color = '';
+  document.getElementById('usersOv').classList.add('show');
+  loadUsers();
+}
+function closeUsers(){ document.getElementById('usersOv').classList.remove('show'); }
+async function loadUsers(){
+  const body = document.getElementById('usersTable');
+  try {
+    const j = await callApp({ action:'listUsers', session:sess() });
+    if (!j || !j.ok){ body.innerHTML = '<div class="empty" style="margin:16px 0">Admin access required.</div>'; return; }
+    usersCache = j.users || [];
+    if (!usersCache.length){ body.innerHTML = '<div class="empty" style="margin:16px 0">No users.</div>'; return; }
+    body.innerHTML = '<table><thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Actions</th></tr></thead><tbody>' +
+      usersCache.map(u => {
+        const me = (AUTH && u.username.toLowerCase() === AUTH.username.toLowerCase());
+        return '<tr>' +
+          '<td>' + esc(u.username) + (me ? ' <span style="color:var(--mut)">(you)</span>' : '') + '</td>' +
+          '<td>' + esc(u.displayName) + '</td>' +
+          '<td><span class="vtag ' + (u.role === 'admin' ? 'mt' : 'ub') + '" style="margin-left:0">' + esc(u.role) + '</span></td>' +
+          '<td>' +
+            '<button class="tblbtn" data-u="' + esc(u.username) + '" onclick="editUser(this.dataset.u)">Edit</button> ' +
+            (me ? '' : '<button class="tblbtn danger" data-u="' + esc(u.username) + '" onclick="deleteUser(this.dataset.u)">Delete</button>') +
+          '</td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch(e){
+    body.innerHTML = '<div class="empty" style="margin:16px 0">Failed to load users: ' + esc(e.message) + '</div>';
+  }
+}
+function editUser(username){
+  const u = usersCache.find(x => x.username === username);
+  if (!u) return;
+  editingUser = username;
+  document.getElementById('uUsername').value = u.username;
+  document.getElementById('uUsername').disabled = true;
+  document.getElementById('uDisplay').value = u.displayName || '';
+  document.getElementById('uPassword').value = '';
+  document.getElementById('uRole').value = u.role || 'user';
+  const t = document.getElementById('userFormTitle'); if (t) t.textContent = 'Edit User: ' + u.username;
+  const b = document.getElementById('userSaveBtn'); if (b) b.textContent = 'Save Changes';
+  const c = document.getElementById('userCancelBtn'); if (c) c.style.display = 'inline-block';
+  const m = document.getElementById('userMsg'); m.textContent = ''; m.style.color = '';
+}
+function resetUserForm(){
+  editingUser = null;
+  const uu = document.getElementById('uUsername'); uu.value = ''; uu.disabled = false;
+  document.getElementById('uDisplay').value = '';
+  document.getElementById('uPassword').value = '';
+  document.getElementById('uRole').value = 'user';
+  const t = document.getElementById('userFormTitle'); if (t) t.textContent = 'Add User';
+  const b = document.getElementById('userSaveBtn'); if (b) b.textContent = 'Add User';
+  const c = document.getElementById('userCancelBtn'); if (c) c.style.display = 'none';
+}
+async function saveUser(){
+  const m = document.getElementById('userMsg');
+  const username = document.getElementById('uUsername').value.trim();
+  const displayName = document.getElementById('uDisplay').value.trim();
+  const password = document.getElementById('uPassword').value;
+  const role = document.getElementById('uRole').value;
+  if (!username){ m.style.color = 'var(--off)'; m.textContent = 'Username is required.'; return; }
+  if (!editingUser && !password){ m.style.color = 'var(--off)'; m.textContent = 'Password is required for a new user.'; return; }
+  try {
+    const j = await callApp({ action:'saveUser', session:sess(), data:{ username, displayName, role, password } });
+    if (j && j.ok){ m.style.color = 'var(--ok)'; m.textContent = editingUser ? 'User updated.' : 'User added.'; resetUserForm(); loadUsers(); }
+    else { m.style.color = 'var(--off)'; m.textContent = 'Error: ' + ((j && j.error) || 'failed'); }
+  } catch(e){ m.style.color = 'var(--off)'; m.textContent = 'Error: ' + e.message; }
+}
+async function deleteUser(username){
+  if (!confirm('Delete user "' + username + '"?')) return;
+  try {
+    const j = await callApp({ action:'deleteUser', session:sess(), data:{ username } });
+    const m = document.getElementById('userMsg');
+    if (j && j.ok){ m.style.color = 'var(--ok)'; m.textContent = 'User deleted.'; loadUsers(); }
+    else { m.style.color = 'var(--off)'; m.textContent = 'Error: ' + ((j && j.error) || 'failed'); }
+  } catch(e){ console.error(e); }
+}
+
+// ---- Access requests (admin) ----
+let reqCache = [];
+async function loadReqCount(){
+  try {
+    const j = await callApp({ action:'listRequests', session:sess() });
+    const n = (j && j.ok && j.requests) ? j.requests.length : 0;
+    const b = document.getElementById('reqCount'); if (b){ b.style.display = n ? 'inline' : 'none'; b.textContent = n; }
+  } catch(e){}
+}
+async function openRequests(){
+  document.getElementById('reqOv').classList.add('show');
+  await loadRequests();
+}
+function closeRequests(){ document.getElementById('reqOv').classList.remove('show'); }
+async function loadRequests(){
+  const body = document.getElementById('reqBody');
+  try {
+    const j = await callApp({ action:'listRequests', session:sess() });
+    if (!j || !j.ok){ body.innerHTML = '<div class="empty" style="margin:16px 0">Admin access required.</div>'; return; }
+    reqCache = j.requests || [];
+    if (!reqCache.length){ body.innerHTML = '<div class="empty" style="margin:16px 0">No pending requests.</div>'; return; }
+    body.innerHTML = '<table><thead><tr><th>Time</th><th>Display Name</th><th>Username</th><th>Note</th><th>Role</th><th>Actions</th></tr></thead><tbody>' +
+      reqCache.map((r, i) => '<tr>' +
+        '<td style="color:var(--mut)">' + (r.ts ? new Date(r.ts).toLocaleString() : '--') + '</td>' +
+        '<td>' + esc(r.displayName || r.username) + '</td>' +
+        '<td>' + esc(r.username) + '</td>' +
+        '<td style="color:var(--mut)">' + esc(r.note || '--') + '</td>' +
+        '<td><select class="minisel" id="reqRole' + i + '"><option value="user">user</option><option value="admin">admin</option></select></td>' +
+        '<td><button class="tblbtn ok" onclick="approveReq(' + i + ')">Approve</button> ' +
+        '<button class="tblbtn no" onclick="rejectReq(' + i + ')">Reject</button></td>' +
+      '</tr>').join('') + '</tbody></table>';
+  } catch(e){
+    body.innerHTML = '<div class="empty" style="margin:16px 0">Failed to load requests: ' + esc(e.message) + '</div>';
+  }
+}
+async function approveReq(i){
+  const r = reqCache[i];
+  if (!r) return;
+  const role = document.getElementById('reqRole' + i) ? document.getElementById('reqRole' + i).value : 'user';
+  if (!confirm('Approve access for "' + r.username + '"?')) return;
+  try {
+    const j = await callApp({ action:'approveRequest', session:sess(), data:{ username: r.username, role } });
+    if (!(j && j.ok)) alert('Error: ' + ((j && j.error) || 'failed'));
+    loadRequests(); loadReqCount();
+  } catch(e){ alert('Error: ' + e.message); }
+}
+async function rejectReq(i){
+  const r = reqCache[i];
+  if (!r) return;
+  if (!confirm('Reject request from "' + r.username + '"?')) return;
+  try {
+    const j = await callApp({ action:'rejectRequest', session:sess(), data:{ username: r.username } });
+    if (!(j && j.ok)) alert('Error: ' + ((j && j.error) || 'failed'));
+    loadRequests(); loadReqCount();
+  } catch(e){ alert('Error: ' + e.message); }
+}
+
+// ---- Add Device (auto ID from server, form adjusts by type) ----
+const TYPE_LABEL = { router:'Router', switch:'Switch', nvr:'NVR', attendance:'Attendance', other:'Other' };
+function onTypeChange(){
+  const t = document.getElementById('adType') ? document.getElementById('adType').value : 'router';
+  const isSnmp = (t === 'router' || t === 'switch' || t === 'other');
+  const isNvr = (t === 'nvr');
+  const sf = document.getElementById('snmpFields'); if (sf) sf.style.display = isSnmp ? '' : 'none';
+  const nf = document.getElementById('nvrFields'); if (nf) nf.style.display = isNvr ? '' : 'none';
+  const ip = document.getElementById('adIsp');
+  if (ip && TYPE_LABEL[t] && ip.dataset.edited !== '1') ip.value = TYPE_LABEL[t];
+}
 function openAddDevice(){
-  ['adId','adName','adIsp','adLoc','adIp','adSnmpPort','adNvrPort','adUser','adPass'].forEach(function(id){ var e = document.getElementById(id); if (e) e.value = ''; });
-  var t = document.getElementById('adType'); if (t) t.value = '';
-  var m = document.getElementById('adMsg'); m.textContent = '';
+  ['adName','adLoc','adIp','adSnmpPort','adNvrPort','adNvrBrand','adUser','adPass'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const isp = document.getElementById('adIsp'); if (isp){ isp.value = ''; isp.dataset.edited = '0'; }
+  const t = document.getElementById('adType'); if (t) t.value = 'router';
+  const mb = document.getElementById('adNvrBrand'); if (mb) mb.value = 'hikvision';
+  onTypeChange();
+  const m = document.getElementById('adMsg'); m.textContent = ''; m.style.color = '';
   document.getElementById('addOv').classList.add('show');
 }
 function closeAddDevice(){ document.getElementById('addOv').classList.remove('show'); }
 async function submitAddDevice(){
-  var m = document.getElementById('adMsg');
-  var name = document.getElementById('adName').value.trim();
-  var ip = document.getElementById('adIp').value.trim();
+  const m = document.getElementById('adMsg');
+  const name = document.getElementById('adName').value.trim();
+  const ip = document.getElementById('adIp').value.trim();
   if (!name || !ip){ m.style.color = 'var(--off)'; m.textContent = 'Name and IP are required.'; return; }
-  var data = {
-    id: document.getElementById('adId').value.trim() || name,
+  const t = document.getElementById('adType').value;
+  const isSnmp = (t === 'router' || t === 'switch' || t === 'other');
+  const isNvr = (t === 'nvr');
+  const data = {
     name: name, ip: ip,
     isp: document.getElementById('adIsp').value.trim(),
     location: document.getElementById('adLoc').value.trim(),
-    type: document.getElementById('adType').value,
-    snmpport: document.getElementById('adSnmpPort').value.trim(),
-    nvr_port: document.getElementById('adNvrPort').value.trim(),
-    device_user: document.getElementById('adUser').value.trim(),
-    device_pass: document.getElementById('adPass').value
+    type: (isNvr || t === 'attendance') ? 'ping' : '',
+    snmpport: isSnmp ? document.getElementById('adSnmpPort').value.trim() : '',
+    nvr_brand: isNvr ? (document.getElementById('adNvrBrand').value.trim() || 'hikvision') : '',
+    nvr_port: isNvr ? document.getElementById('adNvrPort').value.trim() : '',
+    device_user: isNvr ? document.getElementById('adUser').value.trim() : '',
+    device_pass: isNvr ? document.getElementById('adPass').value : ''
   };
+  // id ছাড়াই পাঠানো হয় — Apps Script নিজে ID generate করে (user-কে দেখাতে হয় না)
   m.style.color = 'var(--mut)'; m.textContent = 'Adding…';
   try {
-    var r = await fetch(APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'addDevice', token: ADD_TOKEN, data: data }) });
-    var j = await r.json();
-    if (j && j.ok){ m.style.color = 'var(--ok)'; m.textContent = '✅ Added to Google Sheet! Dashboard-এ ~৫ মিনিটের মধ্যে দেখা যাবে।'; }
+    const j = await callApp({ action: 'addDevice', token: ADD_TOKEN, data: data });
+    if (j && j.ok){ m.style.color = 'var(--ok)'; m.textContent = '✅ Added (ID: ' + esc(j.added[0]) + ')! Dashboard-এ ~৫ মিনিটের মধ্যে দেখা যাবে।'; setTimeout(closeAddDevice, 2500); }
     else { m.style.color = 'var(--off)'; m.textContent = 'Error: ' + ((j && j.error) || 'failed'); }
   } catch(e){ m.style.color = 'var(--off)'; m.textContent = 'Error: ' + e.message; }
 }
@@ -657,8 +995,7 @@ async function load(){
     document.getElementById('main').innerHTML = '<div class="empty">Could not load data.json ('+esc(e.message)+'). The Monitor workflow may not have run yet.</div>';
   }
 }
-load();
-setInterval(load, 60000);
+boot();
 </script>
 </body>
 </html>

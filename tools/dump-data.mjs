@@ -1,6 +1,7 @@
 // Dumps the dashboard data to a static JSON file for GitHub Pages.
 // It talks to the locally-running dashboard.js server (same machine/repo),
-// logs in with the admin credentials from auth.json, then writes a snapshot.
+// logs in with the admin credentials from the Google Sheet (Users tab),
+// then writes a snapshot.
 //
 // Usage: node tools/dump-data.mjs [outFile]
 import fs from 'node:fs'
@@ -24,7 +25,7 @@ const OUT = process.argv[2] || path.join(ROOT, 'site', 'data.json')
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 async function adminCreds() {
-  // Prefer users from the Google Sheet (source of truth) when configured
+  // Users come from the Google Sheet (Users tab, source of truth)
   if (process.env.SHEETS_API_URL) {
     try {
       const gs = require('../lib/gsheets.js')
@@ -33,11 +34,6 @@ async function adminCreds() {
       if (admin && admin.username) return { username: admin.username, password: admin.password }
     } catch (e) { console.warn('[dump] sheet users read failed: ' + e.message) }
   }
-  try {
-    const auth = JSON.parse(fs.readFileSync(path.join(ROOT, 'auth.json'), 'utf8'))
-    const admin = (auth.users || []).find((u) => (u.role || 'user') === 'admin') || (auth.users || [])[0]
-    if (admin) return { username: admin.username, password: admin.password }
-  } catch {}
   return { username: 'admin', password: 'admin123' }
 }
 
@@ -56,7 +52,7 @@ async function login() {
         return sc.split(';')[0]
       }
       if (r.status === 401) {
-        console.warn('[dump] login rejected (401) — check auth.json')
+        console.warn('[dump] login rejected (401) — check the Users tab in the sheet')
         return null
       }
     } catch {
@@ -96,7 +92,6 @@ async function getJson(cookie, p) {
     const gs = process.env.SHEETS_API_URL ? require('../lib/gsheets.js') : null
     const siteHist = { generated: now, devices: {} }
 
-    let usedSheets = false
     if (gs && gs.enabled()) {
      try {
       // History in Google Sheets: 'State' tab (prev octets) + 'History' tab (rate samples)
@@ -140,42 +135,9 @@ async function getJson(cookie, p) {
         for (const d of Object.values(siteHist.devices)) for (const s of Object.values(d)) if (s.pts.length > MAXPTS) s.pts = s.pts.slice(-MAXPTS)
       } catch (e) { console.warn('[dump] history read:', e.message) }
       console.log('[dump] history via Sheets: ' + append.length + ' rows')
-      usedSheets = true
-     } catch (e) { console.warn('[dump] sheets history failed -> using cache: ' + (e && e.message)); siteHist.devices = {} }
-    }
-    if (!usedSheets) {
-      // Fallback: file / Actions-cache based history
-      const HISTORY_FILE = process.env.HISTORY_FILE || path.join(ROOT, 'history-data', 'history.json')
-      let hist = { version: 1, devices: {} }
-      try { hist = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8')); hist.devices = hist.devices || {} } catch (e) {}
-      for (const dev of devices) {
-        if (dev.type !== 'snmp' || !dev.interfaces || !dev.interfaces.length) continue
-        const d = hist.devices[dev.id] || (hist.devices[dev.id] = { prev: { t: 0, ifs: {} }, series: {} })
-        d.series = d.series || {}
-        const dt = Math.max((now - (d.prev.t || 0)) || 0, 1000)
-        for (const it of dev.interfaces) {
-          if (it.rxBytes == null || it.txBytes == null) continue
-          const p = d.prev.ifs ? d.prev.ifs[it.idx] : null
-          let rRate = null, tRate = null
-          if (p) {
-            let dr = it.rxBytes - p.rx; if (dr < 0) dr += 4294967296
-            let dtr = it.txBytes - p.tx; if (dtr < 0) dtr += 4294967296
-            rRate = (dr * 8) / (dt / 1000)
-            tRate = (dtr * 8) / (dt / 1000)
-          }
-          const s = d.series[it.idx] || (d.series[it.idx] = { name: it.name, pts: [] })
-          s.name = it.name
-          s.pts.push([now, rRate == null ? null : Math.round(rRate), tRate == null ? null : Math.round(tRate)])
-          if (s.pts.length > MAXPTS) s.pts.splice(0, s.pts.length - MAXPTS)
-        }
-        d.prev = { t: now, ifs: {} }
-        for (const it of dev.interfaces) if (it.rxBytes != null) d.prev.ifs[it.idx] = { rx: it.rxBytes, tx: it.txBytes }
-      }
-      try { fs.mkdirSync(path.dirname(HISTORY_FILE), { recursive: true }); fs.writeFileSync(HISTORY_FILE, JSON.stringify(hist)) } catch (e) { console.warn('[dump] history save:', e.message) }
-      for (const [id, d] of Object.entries(hist.devices)) {
-        siteHist.devices[id] = {}
-        for (const [idx, s] of Object.entries(d.series)) siteHist.devices[id][idx] = { name: s.name, pts: s.pts }
-      }
+     } catch (e) { console.warn('[dump] sheets history failed -> no site history this run: ' + (e && e.message)) }
+    } else {
+      console.warn('[dump] SHEETS_API_URL not set -> no site history this run')
     }
     try { fs.writeFileSync(path.join(ROOT, 'site', 'history.json'), JSON.stringify(siteHist)) } catch (e) {}
 
