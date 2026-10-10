@@ -57,6 +57,16 @@ Actions → **Monitor & Deploy → Run workflow**।
 
 ---
 
+## "+ Add Device" (GitHub Pages site)
+
+Site-এর **+ Add Device** বাটন দিয়ে device যোগ করলে সেটা সরাসরি **Devices** tab-এ append হয় (Apps Script-এর `addDevice` action)। এর জন্য Apps Script-এ একটা limited token দরকার:
+
+```javascript
+var ADD_TOKEN = 'PASTE-ADD-ONLY-TOKEN-HERE';
+```
+
+এই token শুধু `addDevice` অনুমতি দেয় (read/edit/delete নয়) — কারণ site public, তাই token সবাই দেখতে পারে।
+
 ## নোট
 
 - **History বাড়তে থাকবে** → মাঝে মাঝে পুরনো row মুছুন (Sheets সীমা ১ কোটি cell)।

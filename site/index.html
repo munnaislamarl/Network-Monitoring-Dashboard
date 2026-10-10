@@ -164,6 +164,14 @@
   .chartbox { height:320px; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:12px; position:relative; }
   .itable { border:1px solid var(--line); border-radius:8px; overflow:auto; max-height:430px; }
   .dim { color:var(--mut); }
+  .fld { margin-bottom:12px; }
+  .fld label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#8fa1bd; margin-bottom:5px; }
+  .fld input, .fld select { width:100%; background:var(--bg); border:1px solid var(--line); color:var(--txt); padding:10px 12px; border-radius:8px; font-size:13px; outline:none; }
+  .fld input:focus, .fld select:focus { border-color:var(--acc); }
+  .mbtns { display:flex; gap:10px; margin-top:14px; justify-content:flex-end; }
+  .btn.gray { background:var(--line); }
+  .msg { margin-top:8px; font-size:12px; }
+  .frow { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--card); border:1px solid var(--line); color:var(--txt); padding:10px 16px; border-radius:10px; font-size:13px; display:none; z-index:60; box-shadow:0 12px 30px rgba(0,0,0,.5); }
   .toast.show { display:block; }
 </style>
@@ -176,7 +184,7 @@
     <span class="ic">&#128269;</span>
     <input id="search" type="text" placeholder="Search Device by Name or IP" oninput="doSearch()">
   </div>
-  <button class="btn addbtn homeonly" onclick="addNote()">+ Add Device</button>
+  <button class="btn addbtn homeonly" onclick="openAddDevice()">+ Add Device</button>
   <div class="chips end">
     <span class="chip homechip" id="clockChip" title="Live time"><span style="color:var(--mut)">&#128336;</span> <b id="clock">--</b></span>
     <span class="chip alert filterable homechip" onclick="showDevList('offline')" title="Show offline devices">&#128276; Alerts <b id="chipAlerts">0</b></span>
@@ -218,6 +226,40 @@
       <button class="btn" style="background:var(--line)" onclick="closeList()">Close</button>
     </div>
     <div id="listBody"></div>
+  </div>
+</div>
+
+<div class="ov" id="addOv" onclick="if(event.target===this)closeAddDevice()">
+  <div class="modal" style="max-width:560px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 style="margin:0">Add Device</h3>
+      <button class="btn gray" onclick="closeAddDevice()">Close</button>
+    </div>
+    <div class="frow">
+      <div class="fld"><label>ID</label><input id="adId" placeholder="e.g. ael-sw04"></div>
+      <div class="fld"><label>Name *</label><input id="adName" placeholder="e.g. AEL-SW04"></div>
+    </div>
+    <div class="frow">
+      <div class="fld"><label>ISP / Type</label><input id="adIsp" placeholder="e.g. Switch"></div>
+      <div class="fld"><label>Location</label><input id="adLoc" placeholder="e.g. FLOUR-CCR"></div>
+    </div>
+    <div class="frow">
+      <div class="fld"><label>IP Address *</label><input id="adIp" placeholder="e.g. 103.102.42.59"></div>
+      <div class="fld"><label>Check Type</label><select id="adType"><option value="">SNMP</option><option value="ping">ping (NVR / ping)</option></select></div>
+    </div>
+    <div class="frow">
+      <div class="fld"><label>SNMP Port</label><input id="adSnmpPort" placeholder="default 161 (e.g. 16101)"></div>
+      <div class="fld"><label>NVR Port</label><input id="adNvrPort" placeholder="NVR only (e.g. 2581)"></div>
+    </div>
+    <div class="frow">
+      <div class="fld"><label>Device-User</label><input id="adUser" placeholder="NVR / ISAPI user"></div>
+      <div class="fld"><label>Device-Pass</label><input id="adPass" type="password"></div>
+    </div>
+    <div class="msg" id="adMsg" style="min-height:16px"></div>
+    <div class="mbtns">
+      <button class="btn gray" onclick="closeAddDevice()">Cancel</button>
+      <button class="btn" onclick="submitAddDevice()">Add Device</button>
+    </div>
   </div>
 </div>
 
@@ -517,10 +559,39 @@ function backHome(){
 }
 async function reloadNow(){ await load(); }
 function doSearch(){ searchQ = document.getElementById('search').value.trim(); render(); }
-function addNote(){
-  const t = document.getElementById('toast');
-  t.textContent = 'Add devices via the ROUTERS_JSON secret in the GitHub repo (Settings → Secrets → Actions).';
-  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 4000);
+// ---- Add Device (writes to Google Sheet 'Devices' via Apps Script) ----
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwjB4K1ILtmX7O30oKD3OnxHyvnc_o5T8DuvXs3HN0CgYuwD_ZwZY_TXNf-jwMJyC4snQ/exec';
+var ADD_TOKEN = 'AELADDFWkyHt203zTJs7NbxDdOlKGp';
+function openAddDevice(){
+  ['adId','adName','adIsp','adLoc','adIp','adSnmpPort','adNvrPort','adUser','adPass'].forEach(function(id){ var e = document.getElementById(id); if (e) e.value = ''; });
+  var t = document.getElementById('adType'); if (t) t.value = '';
+  var m = document.getElementById('adMsg'); m.textContent = '';
+  document.getElementById('addOv').classList.add('show');
+}
+function closeAddDevice(){ document.getElementById('addOv').classList.remove('show'); }
+async function submitAddDevice(){
+  var m = document.getElementById('adMsg');
+  var name = document.getElementById('adName').value.trim();
+  var ip = document.getElementById('adIp').value.trim();
+  if (!name || !ip){ m.style.color = 'var(--off)'; m.textContent = 'Name and IP are required.'; return; }
+  var data = {
+    id: document.getElementById('adId').value.trim() || name,
+    name: name, ip: ip,
+    isp: document.getElementById('adIsp').value.trim(),
+    location: document.getElementById('adLoc').value.trim(),
+    type: document.getElementById('adType').value,
+    snmpport: document.getElementById('adSnmpPort').value.trim(),
+    nvr_port: document.getElementById('adNvrPort').value.trim(),
+    device_user: document.getElementById('adUser').value.trim(),
+    device_pass: document.getElementById('adPass').value
+  };
+  m.style.color = 'var(--mut)'; m.textContent = 'Adding…';
+  try {
+    var r = await fetch(APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'addDevice', token: ADD_TOKEN, data: data }) });
+    var j = await r.json();
+    if (j && j.ok){ m.style.color = 'var(--ok)'; m.textContent = '✅ Added to Google Sheet! Dashboard-এ ~৫ মিনিটের মধ্যে দেখা যাবে।'; }
+    else { m.style.color = 'var(--off)'; m.textContent = 'Error: ' + ((j && j.error) || 'failed'); }
+  } catch(e){ m.style.color = 'var(--off)'; m.textContent = 'Error: ' + e.message; }
 }
 
 // ---- list modals (Offline / Online / Total / Cameras) ----

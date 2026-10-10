@@ -9,6 +9,7 @@
  */
 
 var TOKEN = 'PASTE-YOUR-TOKEN-HERE'; // এটি আপনার GitHub secret SHEETS_TOKEN এর সমান হতে হবে
+var ADD_TOKEN = 'PASTE-ADD-ONLY-TOKEN-HERE'; // শুধু device add করার limited token (public site ব্যবহার করে)
 
 function doGet(e) { return handle_(e, e.parameter || {}); }
 
@@ -22,8 +23,14 @@ function doPost(e) {
 
 function handle_(e, p) {
   try {
-    if (String(p.token || '') !== TOKEN) return json_({ ok: false, error: 'unauthorized' });
     var action = String(p.action || '');
+    var tk = String(p.token || '');
+    // addDevice may be called with the limited ADD_TOKEN (public site)
+    if (action === 'addDevice') {
+      if (tk !== ADD_TOKEN && tk !== TOKEN) return json_({ ok: false, error: 'unauthorized' });
+      return json_({ ok: true, added: addDevice_(p.data || {}) });
+    }
+    if (tk !== TOKEN) return json_({ ok: false, error: 'unauthorized' });
     switch (action) {
       case 'getDevices':    return json_({ ok: true, values: readAll_('Devices') });
       case 'getUsers':      return json_({ ok: true, values: readAll_('Users') });
@@ -75,6 +82,17 @@ function replaceRows_(name, values) {
   values.forEach(function (r) { while (r.length < w) r.push(''); });
   sh.getRange(1, 1, values.length, w).setValues(values);
   return values.length;
+}
+
+function addDevice_(d) {
+  var sh = sheet_('Devices');
+  if (sh.getLastRow() === 0) sh.getRange(1, 1, 1, 11).setValues([['ID', 'NAME', 'ISP', 'LOCATION', 'IP', 'TYPE', 'SNMPPORT', 'NVR_BRAND', 'NVR_PORT', 'DEVICE-USER', 'DEVICE-PASS']]);
+  var row = [
+    d.id || d.name || '', d.name || d.id || '', d.isp || '', d.location || '', d.ip || '',
+    d.type || '', d.snmpport || '', d.nvr_brand || '', d.nvr_port || '', d.device_user || '', d.device_pass || ''
+  ];
+  sh.appendRow(row);
+  return row;
 }
 
 function sheet_(name) {
