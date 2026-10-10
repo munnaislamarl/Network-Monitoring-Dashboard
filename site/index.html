@@ -1,130 +1,245 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Network Monitoring Dashboard</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AKIJ Resource — Network Monitoring</title>
+<link rel="icon" href="assets/akij-essential-logo.jpg" type="image/jpeg">
 <style>
-  :root{--bg:#0f1420;--card:#1a2233;--line:#2a3547;--txt:#e6edf7;--mut:#8fa1bd;--ok:#2ecc71;--off:#e74c3c;--warn:#f39c12;--acc:#4a8fe0}
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--txt);font-family:'Segoe UI',system-ui,Arial,sans-serif;padding:18px}
-  a{color:var(--acc);text-decoration:none}
-  .bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:16px}
-  .bar h1{font-size:18px;font-weight:700}
-  .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok);display:inline-block;animation:p 1.6s infinite}
-  @keyframes p{0%,100%{opacity:1}50%{opacity:.35}}
-  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
-  .chip{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:6px 13px;font-size:13px;color:var(--mut)}
-  .chip b{color:var(--txt)}
-  .chip.on b{color:var(--ok)} .chip.off b{color:var(--off)} .chip.cam b{color:var(--acc)}
-  .cathead{display:flex;align-items:center;justify-content:space-between;margin:22px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line)}
-  .cathead h2{font-size:16px;font-weight:600;color:var(--acc)}
-  .cathead .c{font-size:12px;color:var(--mut)}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
-  .card.off{opacity:.7}
-  .row1{display:flex;align-items:center;gap:8px}
-  .st{width:10px;height:10px;border-radius:50%;flex:none}
-  .st.on{background:var(--ok);box-shadow:0 0 6px var(--ok)} .st.off{background:var(--off);box-shadow:0 0 6px var(--off)}
-  .name{font-size:14px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .stat{margin-left:auto;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px}
-  .stat.on{background:rgba(46,204,113,.15);color:var(--ok)} .stat.off{background:rgba(231,76,60,.15);color:var(--off)}
-  .sub{font-size:11px;color:var(--mut);margin-top:4px}
-  .sub.mono{font-family:Consolas,monospace}
-  .metrics{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
-  .m{flex:1;min-width:80px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
-  .m .l{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
-  .m .v{font-size:15px;font-weight:700;margin-top:3px}
-  .mini{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}
-  .mini i{display:block;height:100%;background:var(--acc)}
-  .foot{margin-top:22px;text-align:center;font-size:12px;color:var(--mut)}
-  .empty{color:var(--mut);font-size:13px;padding:10px 0}
+  :root { --bg:#0f1420; --card:#1a2233; --line:#2a3547; --txt:#e6edf7; --mut:#8fa1bd; --ok:#2ecc71; --off:#e74c3c; --acc:#4a8fe0; --warn:#f39c12; --ubi:#00a3e0; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--txt); font-family:'Segoe UI',Arial,sans-serif; padding:20px; }
+  /* ---- app top bar (single row) ---- */
+  .appbar { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 16px; margin-bottom:18px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .brand { display:flex; align-items:center; text-decoration:none; cursor:pointer; }
+  .brandlogo { height:46px; width:auto; display:block; border-radius:8px; }
+  .searchwrap { flex:0 1 280px; min-width:170px; position:relative; }
+  .searchwrap input { width:100%; background:var(--bg); border:1px solid var(--line); color:var(--txt); padding:10px 14px 10px 38px; border-radius:8px; font-size:14px; outline:none; }
+  .searchwrap input:focus { border-color:var(--acc); }
+  .searchwrap .ic { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--mut); }
+  .btn { background:var(--acc); color:#fff; border:none; padding:10px 18px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; }
+  .btn:hover { filter:brightness(1.1); }
+  .addbtn { white-space:nowrap; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .chips.end { margin-left:auto; }
+  .chip { background:var(--bg); border:1px solid var(--line); padding:6px 13px; border-radius:20px; font-size:13px; color:var(--mut); }
+  .chip b { color:var(--txt); }
+  .chip.on b { color:var(--ok); }
+  .chip.off b { color:var(--off); }
+  .chip.alert { color:var(--warn); }
+  .chip.alert b { color:var(--warn); }
+  .chip.live { color:var(--ok); }
+  .livedot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--ok); margin-right:6px; box-shadow:0 0 6px var(--ok); animation:pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .user { display:flex; align-items:center; gap:10px; padding:3px 8px 3px 14px; border-left:1px solid var(--line); margin-left:4px; }
+  .uavatar { width:36px; height:36px; border-radius:50%; background:var(--acc); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; }
+  .uinfo { line-height:1.2; }
+  .uname { font-size:14px; font-weight:600; }
+  .urole { font-size:11px; color:var(--mut); }
+  @media(max-width:900px){ .searchwrap{flex-basis:100%; order:3} }
+  /* ---- categories ---- */
+  .cathead { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:24px 0 12px; padding-bottom:8px; border-bottom:2px solid var(--line); }
+  .cathead h2 { font-size:17px; font-weight:600; color:var(--acc); }
+  .cathead .ccount { font-size:12px; color:var(--mut); }
+  .cat { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:12px; }
+  @media(max-width:1400px){ .cat{grid-template-columns:repeat(4, minmax(0, 1fr));} }
+  @media(max-width:1100px){ .cat{grid-template-columns:repeat(3, minmax(0, 1fr));} }
+  @media(max-width:820px){ .cat{grid-template-columns:repeat(2, minmax(0, 1fr));} }
+  @media(max-width:520px){ .cat{grid-template-columns:1fr;} }
+  .devcard { background:var(--card); border:1px solid var(--line); border-radius:10px; cursor:pointer; transition:border-color .15s; }
+  .devcard:hover { border-color:var(--acc); }
+  .devcard.off { opacity:.78; }
+  .devhead { padding:12px 14px; display:flex; align-items:center; gap:12px; }
+  .stDot { width:12px; height:12px; border-radius:50%; flex:0 0 auto; }
+  .stDot.on { background:var(--ok); box-shadow:0 0 8px var(--ok); }
+  .stDot.off { background:var(--off); box-shadow:0 0 8px var(--off); }
+  .devinfo { flex:1; min-width:0; }
+  .devname { font-weight:600; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .devsub { font-size:11px; color:var(--mut); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .devstat { font-size:11px; font-weight:700; padding:4px 10px; border-radius:6px; flex:0 0 auto; }
+  .devstat.on { background:rgba(46,204,113,.15); color:var(--ok); }
+  .devstat.off { background:rgba(231,76,60,.15); color:var(--off); }
+  .chint { color:var(--mut); font-size:16px; flex:0 0 auto; }
+  .vtag { display:inline-block; font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; margin-left:6px; vertical-align:middle; }
+  .vtag.mt { background:rgba(74,143,224,.15); color:var(--acc); }
+  .vtag.ub { background:rgba(0,163,224,.15); color:var(--ubi); }
+  .vtag.cb { background:rgba(242,156,23,.15); color:var(--warn); }
+  .foot { margin-top:18px; color:var(--mut); font-size:12px; text-align:center; }
+  .empty { color:var(--mut); font-size:13px; margin-top:24px; text-align:center; }
+  /* ---- modal ---- */
+  .ov { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:50; align-items:center; justify-content:center; padding:20px; }
+  .ov.show { display:flex; }
+  .modal { background:var(--card); border:1px solid var(--line); border-radius:12px; width:100%; max-width:680px; padding:20px; max-height:86vh; overflow:auto; }
+  .modal h3 { margin-bottom:14px; font-size:17px; }
+  .meta { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; font-size:12px; margin-bottom:12px; }
+  .meta .lbl { color:var(--mut); }
+  .meta .val { font-family:Consolas,monospace; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th,td { text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--mut); font-weight:600; }
+  tr:last-child td { border-bottom:none; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+  .dot.up { background:var(--ok); }
+  .dot.down { background:var(--off); }
+  .scroll { max-height:340px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
+  .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--card); border:1px solid var(--line); color:var(--txt); padding:10px 16px; border-radius:10px; font-size:13px; display:none; z-index:60; box-shadow:0 12px 30px rgba(0,0,0,.5); }
+  .toast.show { display:block; }
 </style>
 </head>
 <body>
-  <div class="bar">
-    <span class="dot"></span>
-    <h1>Network Monitoring Dashboard</h1>
-    <span id="updated" class="sub" style="margin:0">loading…</span>
-    <div class="chips" id="chips"></div>
+<header class="appbar">
+  <a class="brand" href="#" title="AKIJ Resource"><img src="assets/akij-essential-logo.jpg" alt="AKIJ Resource" class="brandlogo"></a>
+  <div class="searchwrap">
+    <span class="ic">&#128269;</span>
+    <input id="search" type="text" placeholder="Search Device by Name or IP" oninput="doSearch()">
   </div>
-  <div id="main"><div class="empty">Loading data…</div></div>
-  <div class="foot">Auto-refreshes every 60s · data via GitHub Actions · <span id="gen"></span></div>
+  <button class="btn addbtn" onclick="addNote()">+ Add Device</button>
+  <div class="chips end">
+    <span class="chip alert" title="Devices + cameras needing attention">&#128276; Alerts <b id="chipAlerts">0</b></span>
+    <span class="chip">Total <b id="stTotal">0</b></span>
+    <span class="chip on">Online <b id="stOn">0</b></span>
+    <span class="chip off">Offline <b id="stOff">0</b></span>
+    <span class="chip">Total Cam <b id="stTotalCam">0</b></span>
+    <span class="chip on">Online Cam <b id="stOnCam">0</b></span>
+    <span class="chip off">Offline Cam <b id="stOffCam">0</b></span>
+    <span class="chip live"><span class="livedot"></span>Live</span>
+    <span class="chip" style="opacity:.7">Updated <b id="stUpd">--</b></span>
+    <div class="user">
+      <div class="uavatar">M</div>
+      <div class="uinfo"><div class="uname">Munna</div><div class="urole">admin</div></div>
+    </div>
+  </div>
+</header>
+
+<div id="main"><div class="empty">Loading…</div></div>
+<div class="foot">Data refreshed via GitHub Actions every 5 min &middot; AKIJ Resource Network Monitoring</div>
+
+<div class="ov" id="detailOv" onclick="if(event.target===this)closeDetail()">
+  <div class="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <h3 id="detailTitle" style="margin:0">Device</h3>
+      <button class="btn" style="background:var(--line)" onclick="closeDetail()">Close</button>
+    </div>
+    <div id="detailBody" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 const esc = s => String(s == null ? '--' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function pct(used, total){ if(!total) return null; return Math.max(0, Math.min(100, Math.round((used/total)*100))); }
+const CATS = [
+  { key:'mikrotik', label:'MikroTik Routers', icon:'&#128241;' },
+  { key:'ubiquiti', label:'Ubiquiti Routers', icon:'&#128241;' },
+  { key:'switch',   label:'LAN Switches',     icon:'&#128450;' },
+  { key:'nvr',      label:'NVR / CCTV',       icon:'&#127909;' },
+  { key:'other',    label:'Other Devices',    icon:'&#128268;' },
+  { key:'ping',     label:'Attendance Devices', icon:'&#128247;' }
+];
+let searchQ = '';
+let DATA = null;
 
-function deviceCard(d){
-  const on = !!d.online;
-  const ramPct = pct((d.memTotal||0)-(d.memFree||0), d.memTotal||0);
-  let metrics = '';
-  if (d.cpu != null || ramPct != null){
-    metrics += '<div class="metrics">';
-    if (d.cpu != null) metrics += '<div class="m"><div class="l">CPU</div><div class="v">'+d.cpu+'%</div><div class="mini"><i style="width:'+d.cpu+'%"></i></div></div>';
-    if (ramPct != null) metrics += '<div class="m"><div class="l">RAM</div><div class="v">'+ramPct+'%</div><div class="mini"><i style="width:'+ramPct+'%"></i></div></div>';
-    metrics += '</div>';
-  }
-  const meta = esc(d.isp) + (d.location ? ' · ' + esc(d.location) : '') + (d.latency != null ? ' · ' + d.latency + ' ms' : '');
-  return '<div class="card '+(on?'':'off')+'">'+
-    '<div class="row1"><span class="st '+(on?'on':'off')+'"></span><span class="name" title="'+esc(d.name)+'">'+esc(d.name)+'</span>'+
-      '<span class="stat '+(on?'on':'off')+'">'+(on?'ONLINE':'OFFLINE')+'</span></div>'+
-    '<div class="sub">'+meta+'</div>'+
-    '<div class="sub mono">'+esc(d.ip)+(d.model?(' · '+esc(d.model)):'')+'</div>'+
-    metrics+
+function catOf(r){
+  if (r.type === 'ping' && (r.isp||'').toLowerCase().indexOf('nvr') >= 0) return 'nvr';
+  if (r.type === 'ping') return 'ping';
+  if ((r.isp||'').toLowerCase().indexOf('switch') >= 0) return 'switch';
+  if (r.vendor === 'ubiquiti') return 'ubiquiti';
+  if (r.vendor === 'mikrotik') return 'mikrotik';
+  return 'other';
+}
+function brandOf(r){
+  if (r.vendor === 'ubiquiti') return { label:'Ubiquiti', cls:'ub' };
+  if (r.vendor === 'mikrotik') return { label:'MikroTik', cls:'mt' };
+  if (r.vendor === 'cisco')    return { label:'Cisco', cls:'cb' };
+  if ((r.isp||'').toLowerCase().indexOf('switch') >= 0) return { label:'Switch', cls:'cb' };
+  return null;
+}
+function vtagHtml(r){ const b = brandOf(r); return b ? '<span class="vtag '+b.cls+'">'+b.label+'</span>' : ''; }
+function ramPct(d){ if (!d.memTotal) return null; return Math.max(0, Math.min(100, Math.round(((d.memTotal - d.memFree) / d.memTotal) * 100))); }
+
+function devCard(r){
+  if (searchQ){ const hay = (r.name+' '+r.isp+' '+r.ip+' '+r.location).toLowerCase(); if (hay.indexOf(searchQ.toLowerCase()) < 0) return ''; }
+  const on = r.online;
+  const sub = esc(r.location) + ' &middot; ' + esc(r.ip);
+  return '<div class="devcard '+(on?'':'off')+'" onclick="openDetail(\''+esc(r.id)+'\')">'+
+    '<div class="devhead">'+
+      '<span class="stDot '+(on?'on':'off')+'"></span>'+
+      '<div class="devinfo">'+
+        '<div class="devname">'+esc(r.name)+vtagHtml(r)+' <span style="color:var(--mut);font-weight:400">('+esc(r.isp)+')</span></div>'+
+        '<div class="devsub">'+sub+'</div>'+
+      '</div>'+
+      '<div class="devstat '+(on?'on':'off')+'">'+(on?'ONLINE':'OFFLINE')+'</div>'+
+      '<span class="chint">&#9654;</span>'+
+    '</div>'+
   '</div>';
 }
 
-function render(p){
+function render(){
+  const p = DATA || { devices:[], cameras:null };
   const devices = p.devices || [];
   const cams = p.cameras;
-  const on = devices.filter(d=>d.online).length;
-  const camOn = cams ? cams.online : 0, camTot = cams ? cams.total : 0;
+  const on = devices.filter(d => d.online).length;
+  const off = devices.length - on;
 
-  document.getElementById('chips').innerHTML =
-    '<span class="chip">Devices <b>'+devices.length+'</b></span>'+
-    '<span class="chip on">Online <b>'+on+'</b></span>'+
-    '<span class="chip off">Offline <b>'+(devices.length-on)+'</b></span>'+
-    (cams ? '<span class="chip cam">Cameras <b>'+camOn+'/'+camTot+'</b></span>' : '');
+  document.getElementById('stTotal').textContent = devices.length;
+  document.getElementById('stOn').textContent = on;
+  document.getElementById('stOff').textContent = off;
+  document.getElementById('stTotalCam').textContent = cams ? (cams.total||0) : 0;
+  document.getElementById('stOnCam').textContent = cams ? (cams.online||0) : 0;
+  document.getElementById('stOffCam').textContent = cams ? (cams.offline||0) : 0;
+  document.getElementById('chipAlerts').textContent = off + (cams ? (cams.offline||0) : 0);
+  document.getElementById('stUpd').textContent = p.generated ? new Date(p.generated).toLocaleTimeString() : '--';
 
-  // group devices
-  const groups = {};
-  for (const d of devices){ const g = d.isp || 'Devices'; (groups[g] = groups[g] || []).push(d); }
   let html = '';
-  const keys = Object.keys(groups).sort();
-  for (const g of keys){
-    const list = groups[g];
-    const onN = list.filter(d=>d.online).length;
-    html += '<div class="cathead"><h2>'+esc(g)+'</h2><div class="c">'+onN+'/'+list.length+' online</div></div>';
-    html += '<div class="grid">'+list.map(deviceCard).join('')+'</div>';
+  for (const c of CATS){
+    const group = devices.filter(r => catOf(r) === c.key);
+    if (!group.length) continue;
+    const onN = group.filter(x => x.online).length;
+    html += '<div class="cathead"><h2>'+c.icon+' '+c.label+'</h2><div class="ccount">'+onN+'/'+group.length+' online</div></div>';
+    html += '<div class="cat">'+group.map(devCard).join('')+'</div>';
   }
-  if (!devices.length) html = '<div class="empty">No devices yet. Add ROUTERS_JSON secret and run the Monitor workflow.</div>';
+  document.getElementById('main').innerHTML = html || '<div class="empty">No devices match your search.</div>';
+}
 
-  // NVR cameras summary
-  if (cams && cams.cameras && cams.cameras.length){
-    const byNvr = {};
-    for (const c of cams.cameras){ const k = c.nvr || 'NVR'; (byNvr[k]=byNvr[k]||[]).push(c); }
-    html += '<div class="cathead"><h2>NVR Cameras</h2><div class="c">'+cams.online+'/'+cams.total+' online</div></div>';
-    html += '<div class="grid">';
-    for (const k of Object.keys(byNvr).sort()){
-      const l = byNvr[k], onN = l.filter(c=>c.online===true).length, off = l.length-onN;
-      html += '<div class="card"><div class="row1"><span class="st '+(off?'off':'on')+'"></span>'+
-        '<span class="name">'+esc(k)+'</span><span class="stat '+(off?'off':'on')+'">'+onN+'/'+l.length+'</span></div>'+
-        '<div class="sub">'+off+' offline camera'+(off===1?'':'s')+'</div></div>';
-    }
-    html += '</div>';
-  }
-
-  document.getElementById('main').innerHTML = html;
-  document.getElementById('updated').textContent = 'Updated ' + new Date(p.generated||Date.now()).toLocaleString();
-  document.getElementById('gen').textContent = 'snapshot ' + new Date(p.generated||Date.now()).toLocaleString();
+function openDetail(id){
+  const d = (DATA.devices||[]).find(x => x.id === id);
+  if (!d) return;
+  document.getElementById('detailTitle').textContent = d.name;
+  const ram = ramPct(d);
+  let meta = '<div class="meta">';
+  meta += '<div><span class="lbl">Status</span><div class="val '+(d.online?'':'')+'">'+(d.online?'Online':'Offline')+'</div></div>';
+  meta += '<div><span class="lbl">IP</span><div class="val">'+esc(d.ip)+'</div></div>';
+  meta += '<div><span class="lbl">ISP</span><div class="val">'+esc(d.isp)+'</div></div>';
+  meta += '<div><span class="lbl">Location</span><div class="val">'+esc(d.location)+'</div></div>';
+  if (d.model) meta += '<div><span class="lbl">Model</span><div class="val">'+esc(d.model)+'</div></div>';
+  if (d.version) meta += '<div><span class="lbl">Version</span><div class="val">'+esc(d.version)+'</div></div>';
+  if (d.upText) meta += '<div><span class="lbl">Uptime</span><div class="val">'+esc(d.upText)+'</div></div>';
+  if (d.cpu != null) meta += '<div><span class="lbl">CPU</span><div class="val">'+d.cpu+'%</div></div>';
+  if (ram != null) meta += '<div><span class="lbl">RAM</span><div class="val">'+ram+'%</div></div>';
+  meta += '</div>';
+  let ifs = '';
+  if (d.interfaces && d.interfaces.length){
+    ifs = '<div class="scroll"><table><thead><tr><th>Interface</th><th>Link</th><th>RX</th><th>TX</th></tr></thead><tbody>'+
+      d.interfaces.map(i => '<tr><td>'+esc(i.name)+'</td><td><span class="dot '+(i.oper===1?'up':'down')+'"></span>'+(i.oper===1?'Up':'Down')+'</td><td>'+esc(i.rxRate||'--')+' <span style="color:var(--mut)">('+esc(i.rx)+')</span></td><td>'+esc(i.txRate||'--')+' <span style="color:var(--mut)">('+esc(i.tx)+')</span></td></tr>').join('')+
+      '</tbody></table></div>';
+  } else { ifs = '<div class="empty" style="margin:8px 0">No interface data</div>'; }
+  document.getElementById('detailBody').innerHTML = meta + ifs;
+  document.getElementById('detailOv').classList.add('show');
+}
+function closeDetail(){ document.getElementById('detailOv').classList.remove('show'); }
+function doSearch(){ searchQ = document.getElementById('search').value.trim(); render(); }
+function addNote(){
+  const t = document.getElementById('toast');
+  t.textContent = 'Add devices via the ROUTERS_JSON secret in the GitHub repo (Settings → Secrets → Actions).';
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 4000);
 }
 
 async function load(){
   try {
-    const r = await fetch('data.json?_=' + Date.now(), { cache: 'no-store' });
+    const r = await fetch('data.json?_=' + Date.now(), { cache:'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    render(await r.json());
+    DATA = await r.json();
+    render();
   } catch(e){
     document.getElementById('main').innerHTML = '<div class="empty">Could not load data.json ('+esc(e.message)+'). The Monitor workflow may not have run yet.</div>';
   }
