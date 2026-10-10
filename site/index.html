@@ -112,6 +112,44 @@
   .hslot.ok .d { background:var(--ok); box-shadow:0 0 6px var(--ok); }
   .hslot.warn { border-color:rgba(243,156,18,.5); color:#fde3b5; }
   .hslot.warn .d { background:var(--warn); box-shadow:0 0 6px var(--warn); }
+  /* ---- NVR page view ---- */
+  #nvrView { display:none; }
+  .nvrcard { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin-bottom:16px; }
+  .back { color:var(--acc); font-weight:600; font-size:13px; cursor:pointer; display:inline-block; }
+  .back:hover { text-decoration:underline; }
+  .camwrap { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .camnav { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .navbtn { background:var(--bg); border:1px solid var(--line); color:var(--mut); padding:7px 13px; border-radius:8px; font-size:12px; cursor:pointer; }
+  .navbtn:hover { border-color:var(--acc); color:var(--txt); }
+  .navbtn.active { background:var(--acc); color:#fff; border-color:var(--acc); }
+  .navbtn.dis { opacity:.45; cursor:default; }
+  .navbtn.dis:hover { border-color:var(--line); color:var(--mut); }
+  .camsearch { flex:1; min-width:170px; }
+  .camsearch input, .camnav select { width:100%; background:var(--bg); border:1px solid var(--line); color:var(--txt); padding:8px 12px; border-radius:8px; font-size:13px; outline:none; }
+  .camnav .count { font-size:12px; color:var(--mut); white-space:nowrap; }
+  .camgrid { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:12px; }
+  @media(max-width:1400px){ .camgrid{grid-template-columns:repeat(4, minmax(0,1fr));} }
+  @media(max-width:1100px){ .camgrid{grid-template-columns:repeat(3, minmax(0,1fr));} }
+  @media(max-width:820px){ .camgrid{grid-template-columns:repeat(2, minmax(0,1fr));} }
+  @media(max-width:520px){ .camgrid{grid-template-columns:1fr;} }
+  .camcard { background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:12px; }
+  .camcard.off { opacity:.75; }
+  .camcard-head { display:flex; align-items:center; justify-content:space-between; }
+  .camch { font-size:11px; font-weight:700; color:var(--acc); background:rgba(74,143,224,.14); padding:3px 8px; border-radius:8px; }
+  .camdot { width:10px; height:10px; border-radius:50%; }
+  .camdot.on { background:var(--ok); box-shadow:0 0 6px var(--ok); }
+  .camdot.off { background:var(--off); box-shadow:0 0 6px var(--off); }
+  .camname { font-size:13px; font-weight:600; margin-top:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .camip { font-size:11px; color:var(--mut); margin-top:3px; font-family:Consolas,monospace; }
+  .camtags { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .camtag { font-size:9px; font-weight:700; letter-spacing:.05em; padding:3px 8px; border-radius:20px; }
+  .camtag.rec { background:rgba(46,204,113,.15); color:var(--ok); }
+  .camtag.rec.idle { background:rgba(143,161,189,.15); color:var(--mut); }
+  .camtag.on { background:rgba(46,204,113,.15); color:var(--ok); }
+  .camtag.off { background:rgba(231,76,60,.15); color:var(--off); }
+  .refreshfab { position:fixed; right:22px; bottom:22px; background:var(--card); border:1px solid var(--line); color:var(--txt); padding:12px 18px; border-radius:24px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,.5); display:none; z-index:20; }
+  .refreshfab:hover { border-color:var(--acc); color:var(--acc); }
+  .refreshfab.show { display:block; }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--card); border:1px solid var(--line); color:var(--txt); padding:10px 16px; border-radius:10px; font-size:13px; display:none; z-index:60; box-shadow:0 12px 30px rgba(0,0,0,.5); }
   .toast.show { display:block; }
 </style>
@@ -143,6 +181,8 @@
 </header>
 
 <div id="main"><div class="empty">Loading…</div></div>
+<div id="nvrView"></div>
+<button class="refreshfab" id="refreshFab" onclick="reloadNow()">&#8635; Refresh</button>
 <div class="foot">Data refreshed via GitHub Actions every 5 min &middot; AKIJ Resource Network Monitoring</div>
 
 <div class="ov" id="detailOv" onclick="if(event.target===this)closeDetail()">
@@ -245,7 +285,7 @@ function render(){
 function openDetail(id){
   const d = (DATA.devices||[]).find(x => x.id === id);
   if (!d) return;
-  if (d.hasNvr && DATA.nvrs && DATA.nvrs[id]) { openNvrDetail(DATA.nvrs[id]); return; }
+  if (d.hasNvr && DATA.nvrs && DATA.nvrs[id]) { camFilter = 'all'; camSearchQ = ''; openNvrView(DATA.nvrs[id]); return; }
   document.getElementById('detailTitle').textContent = d.name;
   const ram = ramPct(d);
   let meta = '<div class="meta">';
@@ -290,10 +330,46 @@ function ringHtml(p, label){
   const v = (p == null) ? 'N/A' : p + '%';
   return '<div class="gauge"><div class="ring" style="--p:' + (p == null ? 0 : p) + ';--c:' + ringColor(p) + '"><span>' + v + '</span></div><div class="glbl">' + label + '</div></div>';
 }
-function openNvrDetail(n){
-  document.getElementById('detailTitle').textContent = n.name || 'NVR';
+let CUR_NVR = null, camFilter = 'all', camSearchQ = '';
+function navBtn(f, label){ return '<button class="navbtn'+(camFilter===f?' active':'')+'" data-f="'+f+'" onclick="setCamFilter(\''+f+'\')">'+label+'</button>'; }
+function camCard(c){
+  const on = c.online === true;
+  const rec = on ? (c.recording !== false) : false;
+  const name = c.alias || c.name || ('CH' + c.id);
+  return '<div class="camcard '+(on?'':'off')+'">'+
+    '<div class="camcard-head"><span class="camch">CH'+esc(c.id)+'</span><span class="camdot '+(on?'on':'off')+'"></span></div>'+
+    '<div class="camname" title="'+esc(name)+'">'+esc(name)+'</div>'+
+    '<div class="camip">'+esc(c.ip)+'</div>'+
+    '<div class="camtags"><span class="camtag '+(rec?'rec':'rec idle')+'">'+(rec?'RECORDING':'STANDBY')+'</span><span class="camtag '+(on?'on':'off')+'">'+(on?'ONLINE':'OFFLINE')+'</span></div>'+
+  '</div>';
+}
+function setCamFilter(f){ camFilter = f; document.querySelectorAll('#nvrView .navbtn[data-f]').forEach(b => b.classList.toggle('active', b.dataset.f === f)); renderCameras(); }
+function renderCameras(){
+  if (!CUR_NVR) return;
+  let list = (CUR_NVR.cameras || []).filter(c => !c.hidden);
+  if (camFilter === 'online') list = list.filter(c => c.online === true);
+  else if (camFilter === 'offline') list = list.filter(c => c.online === false);
+  else if (camFilter === 'recissue') list = list.filter(c => c.online === true && c.recording === false);
+  const q = (document.getElementById('camSearch') ? document.getElementById('camSearch').value : '').toLowerCase();
+  if (q) list = list.filter(c => ((c.alias || c.name || '') + ' ' + c.ip).toLowerCase().indexOf(q) >= 0);
+  const sort = document.getElementById('camSort') ? document.getElementById('camSort').value : 'ch';
+  if (sort === 'name') list = list.slice().sort((a,b) => (a.alias||a.name||'').localeCompare(b.alias||b.name||''));
+  else if (sort === 'status') list = list.slice().sort((a,b) => (a.online===true?0:1) - (b.online===true?0:1));
+  else list = list.slice().sort((a,b) => a.id - b.id);
+  const total = (CUR_NVR.cameras || []).filter(c => !c.hidden).length;
+  const cnt = document.getElementById('camCount'); if (cnt) cnt.textContent = list.length + ' / ' + total + ' cameras';
+  const g = document.getElementById('camGrid'); if (g) g.innerHTML = list.map(camCard).join('') || '<div class="empty" style="grid-column:1/-1;margin:10px 0">No cameras match.</div>';
+}
+function openNvrView(n){
+  CUR_NVR = n;
+  document.getElementById('main').style.display = 'none';
+  const v = document.getElementById('nvrView');
+  v.style.display = 'block';
+  document.getElementById('refreshFab').classList.add('show');
   const alerts = (n.offlineCount || 0) + ((n.hdds||[]).filter(h => h.status && h.status !== 'healthy').length);
-  let html = '<div class="nvrhead">' +
+  let html = '<div class="nvrcard">';
+  html += '<div class="back" onclick="backHome()">&larr; Back to Dashboard</div>';
+  html += '<div class="nvrhead" style="margin-top:10px">' +
     '<div class="nvrtitle">' + esc(n.name) + '</div>' +
     '<div class="nvrtags"><span class="nvrchip">' + esc(n.model || '--') + '</span><span class="nvrchip brand">' + esc((n.brand || '').toUpperCase()) + '</span></div>' +
     '<div class="nvrsub">' + esc(n.ip) + ':' + esc(n.port) + '</div></div>';
@@ -315,10 +391,29 @@ function openNvrDetail(n){
     else if (h && h.status === 'warning') slots += '<span class="hslot warn"><span class="d"></span>hdd' + i + ': warning</span>';
     else slots += '<span class="hslot warn"><span class="d"></span>hdd' + i + ': slot free</span>';
   }
-  html += '<div class="hddslots">' + (slots || '<span class="hslot">No storage data</span>') + '</div>';
-  document.getElementById('detailBody').innerHTML = html;
-  document.getElementById('detailOv').classList.add('show');
+  html += '<div class="hddslots" style="margin-top:16px">' + (slots || '<span class="hslot">No storage data</span>') + '</div>';
+  html += '</div>';
+  html += '<div class="camwrap">' +
+    '<div class="camnav">' +
+      navBtn('all','All') + navBtn('online','Online') + navBtn('offline','Offline') + navBtn('recissue','Recording Issues') +
+      '<span class="navbtn dis">Group View</span><span class="navbtn dis">Frame View</span><span class="navbtn dis">Playback</span><span class="navbtn dis">Logs</span><span class="navbtn dis">Intelligence &amp; Compliance</span><span class="navbtn dis">Settings</span>' +
+      '<div class="camsearch"><input id="camSearch" type="text" placeholder="Search camera or IP..." value="' + esc(camSearchQ) + '" oninput="camSearchQ=this.value;renderCameras()"></div>' +
+      '<select id="camSort" onchange="renderCameras()" style="max-width:150px;flex:0 0 auto"><option value="ch">Sort: Channel</option><option value="name">Sort: Name</option><option value="status">Sort: Status</option></select>' +
+      '<span class="count" id="camCount"></span>' +
+    '</div>' +
+    '<div class="camgrid" id="camGrid"></div>' +
+  '</div>';
+  v.innerHTML = html;
+  renderCameras();
+  window.scrollTo(0, 0);
 }
+function backHome(){
+  document.getElementById('nvrView').style.display = 'none';
+  document.getElementById('main').style.display = '';
+  document.getElementById('refreshFab').classList.remove('show');
+  CUR_NVR = null;
+}
+async function reloadNow(){ await load(); }
 function doSearch(){ searchQ = document.getElementById('search').value.trim(); render(); }
 function addNote(){
   const t = document.getElementById('toast');
@@ -381,7 +476,8 @@ async function load(){
     const r = await fetch('data.json?_=' + Date.now(), { cache:'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     DATA = await r.json();
-    render();
+    if (CUR_NVR && DATA.nvrs && DATA.nvrs[CUR_NVR.id]) openNvrView(DATA.nvrs[CUR_NVR.id]);
+    else { if (CUR_NVR) backHome(); render(); }
   } catch(e){
     document.getElementById('main').innerHTML = '<div class="empty">Could not load data.json ('+esc(e.message)+'). The Monitor workflow may not have run yet.</div>';
   }
