@@ -24,15 +24,14 @@
   .pill.filterable { cursor:pointer; user-select:none; transition:border-color .15s, background .15s; }
   .pill.filterable:hover { border-color:var(--acc); }
   .pill.filterable.active { border-color:var(--acc); background:rgba(74,143,224,.15); box-shadow:0 0 0 1px var(--acc) inset; }
-  /* ---- app top bar ---- */
-  .appbar { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:18px; position:relative; }
-  .abrow1 { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  /* ---- app top bar (single row) ---- */
+  .appbar { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 16px; margin-bottom:18px; position:relative; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
   .brand { display:flex; align-items:center; gap:10px; text-decoration:none; cursor:pointer; }
   .brandlogo { height:46px; width:auto; display:block; border-radius:8px; transition:opacity .15s; }
   .brand:hover .brandlogo { opacity:.85; }
   .blogo { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,#5b53d6,#3f3aa8); color:#fff; font-weight:800; }
   .bacc { color:var(--acc); }
-  .abrow1 .searchwrap { flex:1; min-width:200px; }
+  .appbar .searchwrap { flex:0 1 280px; min-width:170px; }
   .addbtn { white-space:nowrap; }
   .user { display:flex; align-items:center; gap:10px; position:relative; cursor:pointer; padding:3px 8px; border-radius:10px; border-left:1px solid var(--line); padding-left:14px; margin-left:4px; }
   .user:hover { background:rgba(74,143,224,.1); }
@@ -45,9 +44,8 @@
   .uinfo { line-height:1.2; }
   .uname { font-size:14px; font-weight:600; }
   .urole { font-size:11px; color:var(--mut); }
-  .abrow2 { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:14px; padding-top:14px; border-top:1px solid var(--line); }
   .chips { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-  .chips.rightend { margin-left:auto; }
+  .chips.end { margin-left:auto; }
   .chip { background:var(--bg); border:1px solid var(--line); padding:6px 13px; border-radius:20px; font-size:13px; color:var(--mut); }
   .chip b { color:var(--txt); }
   .chip.on b { color:var(--ok); }
@@ -67,7 +65,7 @@
   .moremenu.show { display:block; }
   .moremenu button { display:block; width:100%; text-align:left; background:transparent; border:none; color:var(--txt); padding:9px 12px; border-radius:6px; font-size:13px; cursor:pointer; }
   .moremenu button:hover { background:rgba(74,143,224,.14); }
-  @media(max-width:720px){ .abrow1{padding-right:0} .user{position:static; margin-left:auto} .abrow1 .searchwrap{flex-basis:100%; order:3} }
+  @media(max-width:900px){ .appbar .searchwrap{flex-basis:100%; order:3} }
   .cathead { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:24px 0 12px; padding-bottom:8px; border-bottom:2px solid var(--line); }
   .cathead h2 { font-size:17px; font-weight:600; color:var(--acc); }
   .cathead .ccount { font-size:12px; color:var(--mut); }
@@ -139,39 +137,33 @@
 </head>
 <body>
 <header class="appbar">
-  <div class="abrow1">
-    <a class="brand" href="/" title="Home"><img src="/assets/akij-essential-logo.jpg" alt="Akij Essential" class="brandlogo"></a>
-    <div class="searchwrap">
-      <span class="ic">&#128269;</span>
-      <input id="search" type="text" placeholder="Search Device by Name or IP" oninput="doSearch()">
-    </div>
-    <button class="btn addbtn" onclick="openAdd()">+ Add Device</button>
+  <a class="brand" href="/" title="Home"><img src="/assets/akij-essential-logo.jpg" alt="Akij Essential" class="brandlogo"></a>
+  <div class="searchwrap">
+    <span class="ic">&#128269;</span>
+    <input id="search" type="text" placeholder="Search Device by Name or IP" oninput="doSearch()">
   </div>
-  <div class="abrow2">
-    <div class="chips">
-      <span class="chip alert" title="Devices + cameras needing attention">&#128276; Alerts <b id="chipAlerts">0</b></span>
-      <span class="chip filterable" id="pillAll" onclick="setStatusFilter('all')" title="Show all devices">Total <b id="stTotal">0</b></span>
-      <span class="chip on filterable" id="pillOn" onclick="openDevList('online')" title="Show online devices">Online <b id="stOn">0</b></span>
-      <span class="chip off filterable" id="pillOff" onclick="openDevList('offline')" title="Show offline devices">Offline <b id="stOff">0</b></span>
-      <span class="chip" title="Total cameras across all NVRs">Total Cam <b id="stTotalCam">0</b></span>
-      <span class="chip on filterable" id="camOnChip" onclick="showCamList('online')" title="Show online cameras">Online Cam <b id="stOnCam">0</b></span>
-      <span class="chip off filterable" id="camOffChip" onclick="showCamList('offline')" title="Show offline cameras">Offline Cam <b id="stOffCam">0</b></span>
-      <span class="chip live"><span class="livedot"></span>Live</span>
-    </div>
-    <div class="chips rightend">
-      <span class="chip" style="opacity:.7">Updated <b id="stUpd">--</b></span>
-      <div class="user" id="userBox" onclick="toggleProfile(event)">
-        <div class="uavatar" id="uAvatar">?</div>
-        <div class="uinfo">
-          <div class="uname" id="uName">--</div>
-          <div class="urole" id="uRole">admin</div>
-        </div>
-        <span class="uchevs">&#9662;</span>
-        <div class="profilemenu" id="profileMenu">
-          <button onclick="openChangePw()">&#128273; Change Password</button>
-          <button id="menuUserMgmt" onclick="openUserMgmt()" style="display:none">&#128101; User Management</button>
-          <button onclick="doLogout()">&#128275; Sign out</button>
-        </div>
+  <button class="btn addbtn" onclick="openAdd()">+ Add Device</button>
+  <div class="chips end">
+    <span class="chip alert" title="Devices + cameras needing attention">&#128276; Alerts <b id="chipAlerts">0</b></span>
+    <span class="chip filterable" id="pillAll" onclick="setStatusFilter('all')" title="Show all devices">Total <b id="stTotal">0</b></span>
+    <span class="chip on filterable" id="pillOn" onclick="openDevList('online')" title="Show online devices">Online <b id="stOn">0</b></span>
+    <span class="chip off filterable" id="pillOff" onclick="openDevList('offline')" title="Show offline devices">Offline <b id="stOff">0</b></span>
+    <span class="chip" title="Total cameras across all NVRs">Total Cam <b id="stTotalCam">0</b></span>
+    <span class="chip on filterable" id="camOnChip" onclick="showCamList('online')" title="Show online cameras">Online Cam <b id="stOnCam">0</b></span>
+    <span class="chip off filterable" id="camOffChip" onclick="showCamList('offline')" title="Show offline cameras">Offline Cam <b id="stOffCam">0</b></span>
+    <span class="chip live"><span class="livedot"></span>Live</span>
+    <span class="chip" style="opacity:.7">Updated <b id="stUpd">--</b></span>
+    <div class="user" id="userBox" onclick="toggleProfile(event)">
+      <div class="uavatar" id="uAvatar">?</div>
+      <div class="uinfo">
+        <div class="uname" id="uName">--</div>
+        <div class="urole" id="uRole">admin</div>
+      </div>
+      <span class="uchevs">&#9662;</span>
+      <div class="profilemenu" id="profileMenu">
+        <button onclick="openChangePw()">&#128273; Change Password</button>
+        <button id="menuUserMgmt" onclick="openUserMgmt()" style="display:none">&#128101; User Management</button>
+        <button onclick="doLogout()">&#128275; Sign out</button>
       </div>
     </div>
   </div>
