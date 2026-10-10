@@ -1,13 +1,20 @@
 {
-  "name": "default-project",
+  "name": "network-monitoring-dashboard",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Self-hosted NOC dashboard for SNMP + Hikvision NVR monitoring",
+  "main": "dashboard.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node dashboard.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "noc",
+    "snmp",
+    "monitoring",
+    "hikvision",
+    "cctv",
+    "dashboard"
+  ],
+  "author": "munnaislamarl",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {

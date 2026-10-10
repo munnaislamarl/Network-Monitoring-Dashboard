@@ -84,6 +84,15 @@ node dashboard.js
 | `type` | `"ping"` দিলে ping-check, নাহলে SNMP |
 | `nvr` | (শুধু NVR) `{ brand, port, user, pass }` |
 
+## 24/7 সার্ভারে চালানো / Deploy 24/7
+
+আপনার PC বন্ধ থাকলেও monitoring চালু রাখতে একটা always-on cloud **VPS**-এ চালান (Docker)। ধাপে ধাপে গাইড: **[DEPLOY.md](DEPLOY.md)**।
+
+```bash
+cp auth.example.json auth.json && cp routers.example.json routers.json
+docker compose up -d --build
+```
+
 ## নিরাপত্তা / Security
 
 - সব গোপন ফাইল `.gitignore`-এ রাখা আছে — commit করার আগে `git status` দেখে নিন।

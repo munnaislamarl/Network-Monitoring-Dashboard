@@ -1,0 +1,31 @@
+# Never ship these into the image / build context
+node_modules
+.git
+.gitignore
+.opencode
+.playwright-mcp
+
+# secrets & local config (mounted at runtime instead)
+auth.json
+routers.json
+camera-meta.json
+
+# runtime data / logs
+*.log
+logs
+history
+
+# other local projects
+cctv-dashboard
+factory-itsm
+fai-shop-dashboard
+opex-hub
+login
+scripts
+
+# misc
+*.png
+*.ps1
+run-dashboard.bat
+launch-dashboard.bat
+start.bat
