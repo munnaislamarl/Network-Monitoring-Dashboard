@@ -84,7 +84,7 @@ async function getJson(cookie, p) {
     // ---- per-interface traffic history ----
     const now = Date.now()
     const MAXPTS = 300
-    const gs = (process.env.SHEET_ID && process.env.GOOGLE_SERVICE_ACCOUNT) ? require('../lib/gsheets.js') : null
+    const gs = process.env.SHEETS_API_URL ? require('../lib/gsheets.js') : null
     const siteHist = { generated: now, devices: {} }
 
     if (gs && gs.enabled()) {

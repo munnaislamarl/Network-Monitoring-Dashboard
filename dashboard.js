@@ -50,7 +50,7 @@ function invalidateUserSessions(username) {
   for (const [tok, s] of sessions) if (s.username === username) sessions.delete(tok);
 }
 
-// ----- Google Sheets store (optional; used when SHEET_ID + GOOGLE_SERVICE_ACCOUNT are set) -----
+// ----- Google Sheets store (optional; used when SHEETS_API_URL is set) -----
 async function loadSheetConfig() {
   if (!gsheets.enabled()) return false;
   try {
