@@ -23,7 +23,16 @@ const OUT = process.argv[2] || path.join(ROOT, 'site', 'data.json')
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-function adminCreds() {
+async function adminCreds() {
+  // Prefer users from the Google Sheet (source of truth) when configured
+  if (process.env.SHEETS_API_URL) {
+    try {
+      const gs = require('../lib/gsheets.js')
+      const users = gs.usersFromRows(await gs.readTab('Users'))
+      const admin = users.find((u) => (u.role || 'user') === 'admin') || users[0]
+      if (admin && admin.username) return { username: admin.username, password: admin.password }
+    } catch (e) { console.warn('[dump] sheet users read failed: ' + e.message) }
+  }
   try {
     const auth = JSON.parse(fs.readFileSync(path.join(ROOT, 'auth.json'), 'utf8'))
     const admin = (auth.users || []).find((u) => (u.role || 'user') === 'admin') || (auth.users || [])[0]
@@ -33,7 +42,7 @@ function adminCreds() {
 }
 
 async function login() {
-  const { username, password } = adminCreds()
+  const { username, password } = await adminCreds()
   // The server only starts listening AFTER its first poll sweep — retry until ready.
   for (let i = 0; i < 90; i++) {
     try {
