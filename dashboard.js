@@ -484,6 +484,7 @@ function serialize() {
     interfaces: rs.interfaces.map(it => ({
       idx: it.idx, name: it.name, oper: it.oper,
       rx: prettyNum(it.rx), tx: prettyNum(it.tx),
+      rxBytes: it.rx, txBytes: it.tx,
       rxRate: prettyRate(it.rxRate), txRate: prettyRate(it.txRate)
     }))
   }));

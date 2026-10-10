@@ -153,9 +153,21 @@
   .refreshfab { position:fixed; right:22px; bottom:22px; background:var(--card); border:1px solid var(--line); color:var(--txt); padding:12px 18px; border-radius:24px; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,.5); display:none; z-index:20; }
   .refreshfab:hover { border-color:var(--acc); color:var(--acc); }
   .refreshfab.show { display:block; }
+  /* ---- device detail (switch/router) ---- */
+  .sectitle { font-size:13px; font-weight:700; color:var(--acc); margin-bottom:12px; }
+  .histctl { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .histctl select { background:var(--bg); border:1px solid var(--line); color:var(--txt); padding:8px 12px; border-radius:8px; font-size:13px; min-width:190px; outline:none; }
+  .ranges { display:flex; gap:6px; margin-left:auto; }
+  .rbtn { background:var(--bg); border:1px solid var(--line); color:var(--mut); padding:7px 14px; border-radius:8px; font-size:12px; cursor:pointer; }
+  .rbtn:hover { border-color:var(--acc); color:var(--txt); }
+  .rbtn.active { background:var(--acc); color:#fff; border-color:var(--acc); }
+  .chartbox { height:320px; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:12px; position:relative; }
+  .itable { border:1px solid var(--line); border-radius:8px; overflow:auto; max-height:430px; }
+  .dim { color:var(--mut); }
   .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--card); border:1px solid var(--line); color:var(--txt); padding:10px 16px; border-radius:10px; font-size:13px; display:none; z-index:60; box-shadow:0 12px 30px rgba(0,0,0,.5); }
   .toast.show { display:block; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <header class="appbar">
@@ -290,27 +302,7 @@ function openDetail(id){
   const d = (DATA.devices||[]).find(x => x.id === id);
   if (!d) return;
   if (d.hasNvr && DATA.nvrs && DATA.nvrs[id]) { camFilter = 'all'; camSearchQ = ''; openNvrView(DATA.nvrs[id]); return; }
-  document.getElementById('detailTitle').textContent = d.name;
-  const ram = ramPct(d);
-  let meta = '<div class="meta">';
-  meta += '<div><span class="lbl">Status</span><div class="val '+(d.online?'':'')+'">'+(d.online?'Online':'Offline')+'</div></div>';
-  meta += '<div><span class="lbl">IP</span><div class="val">'+esc(d.ip)+'</div></div>';
-  meta += '<div><span class="lbl">ISP</span><div class="val">'+esc(d.isp)+'</div></div>';
-  meta += '<div><span class="lbl">Location</span><div class="val">'+esc(d.location)+'</div></div>';
-  if (d.model) meta += '<div><span class="lbl">Model</span><div class="val">'+esc(d.model)+'</div></div>';
-  if (d.version) meta += '<div><span class="lbl">Version</span><div class="val">'+esc(d.version)+'</div></div>';
-  if (d.upText) meta += '<div><span class="lbl">Uptime</span><div class="val">'+esc(d.upText)+'</div></div>';
-  if (d.cpu != null) meta += '<div><span class="lbl">CPU</span><div class="val">'+d.cpu+'%</div></div>';
-  if (ram != null) meta += '<div><span class="lbl">RAM</span><div class="val">'+ram+'%</div></div>';
-  meta += '</div>';
-  let ifs = '';
-  if (d.interfaces && d.interfaces.length){
-    ifs = '<div class="scroll"><table><thead><tr><th>Interface</th><th>Link</th><th>RX</th><th>TX</th></tr></thead><tbody>'+
-      d.interfaces.map(i => '<tr><td>'+esc(i.name)+'</td><td><span class="dot '+(i.oper===1?'up':'down')+'"></span>'+(i.oper===1?'Up':'Down')+'</td><td>'+esc(i.rxRate||'--')+' <span style="color:var(--mut)">('+esc(i.rx)+')</span></td><td>'+esc(i.txRate||'--')+' <span style="color:var(--mut)">('+esc(i.tx)+')</span></td></tr>').join('')+
-      '</tbody></table></div>';
-  } else { ifs = '<div class="empty" style="margin:8px 0">No interface data</div>'; }
-  document.getElementById('detailBody').innerHTML = meta + ifs;
-  document.getElementById('detailOv').classList.add('show');
+  openDevView(d);
 }
 function closeDetail(){ document.getElementById('detailOv').classList.remove('show'); }
 
@@ -335,6 +327,7 @@ function ringHtml(p, label){
   return '<div class="gauge"><div class="ring" style="--p:' + (p == null ? 0 : p) + ';--c:' + ringColor(p) + '"><span>' + v + '</span></div><div class="glbl">' + label + '</div></div>';
 }
 let CUR_NVR = null, camFilter = 'all', camSearchQ = '';
+let CUR_DEV = null, HIST = null, CHART = null, CUR_RANGE = '24H';
 function navBtn(f, label){ return '<button class="navbtn'+(camFilter===f?' active':'')+'" data-f="'+f+'" onclick="setCamFilter(\''+f+'\')">'+label+'</button>'; }
 function camCard(c){
   const on = c.online === true;
@@ -431,12 +424,96 @@ function openNvrView(n){
   renderCameras();
   window.scrollTo(0, 0);
 }
+// ---- device detail (switch / router) ----
+function prettyBytes(n){
+  if (n == null) return '--';
+  if (n >= 1099511627776) return (n/1099511627776).toFixed(2) + ' TB';
+  if (n >= 1073741824) return (n/1073741824).toFixed(2) + ' GB';
+  if (n >= 1048576) return (n/1048576).toFixed(1) + ' MB';
+  if (n >= 1024) return (n/1024).toFixed(1) + ' KB';
+  return n + ' B';
+}
+function openDevView(d){
+  CUR_DEV = d;
+  document.body.classList.add('nvr-mode');
+  document.getElementById('main').style.display = 'none';
+  const v = document.getElementById('nvrView');
+  v.style.display = 'block';
+  document.getElementById('refreshFab').classList.add('show');
+  const online = !!d.online;
+  const ifs = d.interfaces || [];
+  const infoItem = (l, val) => '<div class="item"><div class="lbl">' + l + '</div><div class="val">' + val + '</div></div>';
+  let html = '<div class="nvrcard">' +
+    '<div class="nvrhead-row"><span class="back" onclick="backHome()">&larr; Back to Dashboard</span><span class="nvrtitle">' + esc(d.name) + '</span><span class="nvronline' + (online ? '' : ' off') + '">' + (online ? 'ONLINE' : 'OFFLINE') + '</span></div>' +
+    '<div class="infogrid">' +
+      infoItem('IP Address', esc(d.ip)) +
+      infoItem('ISP', esc(d.isp)) +
+      infoItem('Location', esc(d.location)) +
+      infoItem('Uptime', fmtUptime(d.upSeconds)) +
+      infoItem('Version', esc(d.version || '--')) +
+      infoItem('Total Traffic', 'RX ' + prettyBytes(d.totalRx) + ' &middot; TX ' + prettyBytes(d.totalTx)) +
+      '<div class="item" style="grid-column:1/-1"><div class="lbl">Model</div><div class="val">' + esc(d.model || '--') + '</div></div>' +
+    '</div></div>';
+  html += '<div class="camwrap" style="margin-bottom:16px"><div class="sectitle">Traffic History (per interface)</div>' +
+    '<div class="histctl">' +
+      '<select id="ifSel" onchange="drawChart()">' + ifs.map(i => '<option value="' + i.idx + '">' + esc(i.name) + '</option>').join('') + '</select>' +
+      '<div class="ranges">' + ['1H','6H','12H','24H'].map(r => '<button class="rbtn" data-r="' + r + '" onclick="setRange(\'' + r + '\')">' + r + '</button>').join('') + '</div>' +
+    '</div>' +
+    '<div class="chartbox"><canvas id="chart"></canvas></div>' +
+    '<div class="gsub" style="text-align:center;margin-top:8px">History builds up over time (one sample every ~5 min)</div>' +
+  '</div>';
+  html += '<div class="camwrap"><div class="sectitle">Interfaces (current)</div>' +
+    (ifs.length ? '<div class="itable"><table><thead><tr><th>Interface</th><th>Link</th><th>RX</th><th>TX</th></tr></thead><tbody>' +
+      ifs.map(i => '<tr><td>' + esc(i.name) + '</td><td><span class="dot ' + (i.oper===1?'up':'down') + '"></span>' + (i.oper===1?'Up':'Down') + '</td><td>' + esc(i.rxRate || '0 bps') + ' <span class="dim">(' + esc(i.rx) + ')</span></td><td>' + esc(i.txRate || '0 bps') + ' <span class="dim">(' + esc(i.tx) + ')</span></td></tr>').join('') +
+      '</tbody></table></div>' : '<div class="empty">No interface data</div>') +
+  '</div>';
+  v.innerHTML = html;
+  setRange(CUR_RANGE);
+  window.scrollTo(0, 0);
+}
+function setRange(r){
+  CUR_RANGE = r;
+  document.querySelectorAll('.rbtn').forEach(b => b.classList.toggle('active', b.dataset.r === r));
+  drawChart();
+}
+function drawChart(){
+  if (!CUR_DEV) return;
+  const sel = document.getElementById('ifSel');
+  const idx = sel ? sel.value : null;
+  const dev = (HIST && HIST.devices && HIST.devices[CUR_DEV.id]) ? HIST.devices[CUR_DEV.id] : {};
+  const ser = dev[idx] || { name: '', pts: [] };
+  const ranges = { '1H': 3600e3, '6H': 6*3600e3, '12H': 12*3600e3, '24H': 24*3600e3 };
+  const cutoff = Date.now() - (ranges[CUR_RANGE] || 24*3600e3);
+  const pts = (ser.pts || []).filter(p => p[0] >= cutoff);
+  const labels = pts.map(p => { const d = new Date(p[0]); return ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2) + ':' + ('0'+d.getSeconds()).slice(-2); });
+  const rx = pts.map(p => p[1] == null ? null : +(p[1]/1e6).toFixed(3));
+  const tx = pts.map(p => p[2] == null ? null : +(p[2]/1e6).toFixed(3));
+  const canvas = document.getElementById('chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (CHART) { CHART.destroy(); CHART = null; }
+  CHART = new Chart(canvas, {
+    type: 'line',
+    data: { labels: labels, datasets: [
+      { label: 'RX ' + (ser.name || ''), data: rx, borderColor: '#4a8fe0', backgroundColor: 'rgba(74,143,224,.12)', borderWidth: 2, pointRadius: 0, tension: .3, spanGaps: true },
+      { label: 'TX ' + (ser.name || ''), data: tx, borderColor: '#2ecc71', backgroundColor: 'rgba(46,204,113,.12)', borderWidth: 2, pointRadius: 0, tension: .3, spanGaps: true }
+    ] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { labels: { color: '#8fa1bd', boxWidth: 12 } } },
+      scales: {
+        x: { ticks: { color: '#8fa1bd', maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,.05)' } },
+        y: { beginAtZero: true, ticks: { color: '#8fa1bd', callback: v => v + ' Mbps' }, grid: { color: 'rgba(255,255,255,.05)' } }
+      }
+    }
+  });
+}
 function backHome(){
   document.getElementById('nvrView').style.display = 'none';
   document.getElementById('main').style.display = '';
   document.getElementById('refreshFab').classList.remove('show');
   document.body.classList.remove('nvr-mode');
-  CUR_NVR = null;
+  if (CHART) { CHART.destroy(); CHART = null; }
+  CUR_NVR = null; CUR_DEV = null;
 }
 async function reloadNow(){ await load(); }
 function doSearch(){ searchQ = document.getElementById('search').value.trim(); render(); }
@@ -501,8 +578,10 @@ async function load(){
     const r = await fetch('data.json?_=' + Date.now(), { cache:'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     DATA = await r.json();
+    try { const h = await fetch('history.json?_=' + Date.now(), { cache:'no-store' }); if (h.ok) HIST = await h.json(); } catch(e) {}
     if (CUR_NVR && DATA.nvrs && DATA.nvrs[CUR_NVR.id]) openNvrView(DATA.nvrs[CUR_NVR.id]);
-    else { if (CUR_NVR) backHome(); render(); }
+    else if (CUR_DEV) { const dd = (DATA.devices||[]).find(x => x.id === CUR_DEV.id); if (dd) openDevView(dd); else render(); }
+    else render();
   } catch(e){
     document.getElementById('main').innerHTML = '<div class="empty">Could not load data.json ('+esc(e.message)+'). The Monitor workflow may not have run yet.</div>';
   }

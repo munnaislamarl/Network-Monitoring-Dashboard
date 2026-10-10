@@ -72,7 +72,44 @@ async function getJson(cookie, p) {
       catch (e) { console.warn('[dump] nvr ' + dev.id + ': ' + e.message) }
     }
 
-    const payload = { generated: Date.now(), devices, cameras, nvrs }
+    // ---- per-interface traffic history (persisted across runs via Actions cache) ----
+    const HISTORY_FILE = process.env.HISTORY_FILE || path.join(ROOT, 'history-data', 'history.json')
+    let hist = { version: 1, devices: {} }
+    try { hist = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8')); hist.devices = hist.devices || {} } catch (e) {}
+    const MAXPTS = 300
+    const now = Date.now()
+    for (const dev of devices) {
+      if (dev.type !== 'snmp' || !dev.interfaces || !dev.interfaces.length) continue
+      const d = hist.devices[dev.id] || (hist.devices[dev.id] = { prev: { t: 0, ifs: {} }, series: {} })
+      d.series = d.series || {}
+      const dt = Math.max((now - (d.prev.t || 0)) || 0, 1000)
+      for (const it of dev.interfaces) {
+        if (it.rxBytes == null || it.txBytes == null) continue
+        const p = d.prev.ifs ? d.prev.ifs[it.idx] : null
+        let rRate = null, tRate = null
+        if (p) {
+          let dr = it.rxBytes - p.rx; if (dr < 0) dr += 4294967296
+          let dtr = it.txBytes - p.tx; if (dtr < 0) dtr += 4294967296
+          rRate = (dr * 8) / (dt / 1000)
+          tRate = (dtr * 8) / (dt / 1000)
+        }
+        const s = d.series[it.idx] || (d.series[it.idx] = { name: it.name, pts: [] })
+        s.name = it.name
+        s.pts.push([now, rRate == null ? null : Math.round(rRate), tRate == null ? null : Math.round(tRate)])
+        if (s.pts.length > MAXPTS) s.pts.splice(0, s.pts.length - MAXPTS)
+      }
+      d.prev = { t: now, ifs: {} }
+      for (const it of dev.interfaces) if (it.rxBytes != null) d.prev.ifs[it.idx] = { rx: it.rxBytes, tx: it.txBytes }
+    }
+    try { fs.mkdirSync(path.dirname(HISTORY_FILE), { recursive: true }); fs.writeFileSync(HISTORY_FILE, JSON.stringify(hist)) } catch (e) { console.warn('[dump] history save:', e.message) }
+    const siteHist = { generated: now, devices: {} }
+    for (const [id, d] of Object.entries(hist.devices)) {
+      siteHist.devices[id] = {}
+      for (const [idx, s] of Object.entries(d.series)) siteHist.devices[id][idx] = { name: s.name, pts: s.pts }
+    }
+    try { fs.writeFileSync(path.join(ROOT, 'site', 'history.json'), JSON.stringify(siteHist)) } catch (e) {}
+
+    const payload = { generated: now, devices, cameras, nvrs }
     fs.mkdirSync(path.dirname(OUT), { recursive: true })
     fs.writeFileSync(OUT, JSON.stringify(payload))
     console.log('[dump] wrote ' + OUT + '  devices=' + devices.length + ' cameras=' + (cameras ? cameras.total : 'n/a') + ' nvrs=' + Object.keys(nvrs).length)
