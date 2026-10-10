@@ -29,6 +29,8 @@
   .chip.alert { color:var(--warn); }
   .chip.alert b { color:var(--warn); }
   .chip.live { color:var(--ok); }
+  .chip.filterable { cursor:pointer; user-select:none; transition:border-color .15s, background .15s; }
+  .chip.filterable:hover { border-color:var(--acc); }
   .livedot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--ok); margin-right:6px; box-shadow:0 0 6px var(--ok); animation:pulse 1.6s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
   .user { display:flex; align-items:center; gap:10px; padding:3px 8px 3px 14px; border-left:1px solid var(--line); margin-left:4px; }
@@ -95,13 +97,14 @@
   </div>
   <button class="btn addbtn" onclick="addNote()">+ Add Device</button>
   <div class="chips end">
-    <span class="chip alert" title="Devices + cameras needing attention">&#128276; Alerts <b id="chipAlerts">0</b></span>
-    <span class="chip">Total <b id="stTotal">0</b></span>
-    <span class="chip on">Online <b id="stOn">0</b></span>
-    <span class="chip off">Offline <b id="stOff">0</b></span>
-    <span class="chip">Total Cam <b id="stTotalCam">0</b></span>
-    <span class="chip on">Online Cam <b id="stOnCam">0</b></span>
-    <span class="chip off">Offline Cam <b id="stOffCam">0</b></span>
+    <span class="chip" id="clockChip" title="Live time"><span style="color:var(--mut)">&#128336;</span> <b id="clock">--</b></span>
+    <span class="chip alert filterable" onclick="showDevList('offline')" title="Show offline devices">&#128276; Alerts <b id="chipAlerts">0</b></span>
+    <span class="chip filterable" onclick="showDevList('all')" title="Show all devices">Total <b id="stTotal">0</b></span>
+    <span class="chip on filterable" onclick="showDevList('online')" title="Show online devices">Online <b id="stOn">0</b></span>
+    <span class="chip off filterable" onclick="showDevList('offline')" title="Show offline devices">Offline <b id="stOff">0</b></span>
+    <span class="chip filterable" onclick="showCamList('all')" title="Show all cameras">Total Cam <b id="stTotalCam">0</b></span>
+    <span class="chip on filterable" onclick="showCamList('online')" title="Show online cameras">Online Cam <b id="stOnCam">0</b></span>
+    <span class="chip off filterable" onclick="showCamList('offline')" title="Show offline cameras">Offline Cam <b id="stOffCam">0</b></span>
     <span class="chip live"><span class="livedot"></span>Live</span>
     <span class="chip" style="opacity:.7">Updated <b id="stUpd">--</b></span>
     <div class="user">
@@ -121,6 +124,16 @@
       <button class="btn" style="background:var(--line)" onclick="closeDetail()">Close</button>
     </div>
     <div id="detailBody" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<div class="ov" id="listOv" onclick="if(event.target===this)closeList()">
+  <div class="modal" style="max-width:920px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 id="listTitle" style="margin:0">List</h3>
+      <button class="btn" style="background:var(--line)" onclick="closeList()">Close</button>
+    </div>
+    <div id="listBody"></div>
   </div>
 </div>
 
@@ -233,6 +246,56 @@ function addNote(){
   t.textContent = 'Add devices via the ROUTERS_JSON secret in the GitHub repo (Settings → Secrets → Actions).';
   t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 4000);
 }
+
+// ---- list modals (Offline / Online / Total / Cameras) ----
+function showDevList(filter){
+  let list = (DATA && DATA.devices ? DATA.devices : []).slice();
+  if (filter === 'online') list = list.filter(r => r.online);
+  else if (filter === 'offline') list = list.filter(r => !r.online);
+  const title = filter === 'online' ? 'Online Devices (' + list.length + ')'
+              : filter === 'offline' ? 'Offline Devices (' + list.length + ')'
+              : 'All Devices (' + list.length + ')';
+  document.getElementById('listTitle').textContent = title;
+  document.getElementById('listBody').innerHTML = list.length
+    ? '<div class="scroll"><table><thead><tr><th>Status</th><th>Device Name</th><th>ISP / Type</th><th>IP Address</th><th>Location</th></tr></thead><tbody>' +
+      list.map(r => '<tr style="cursor:pointer" onclick="openDetail(\'' + esc(r.id) + '\')">' +
+        '<td><span class="dot ' + (r.online ? 'up' : 'down') + '"></span>' + (r.online ? 'Online' : 'Offline') + '</td>' +
+        '<td>' + esc(r.name) + '</td>' +
+        '<td style="color:var(--mut)">' + esc(r.isp) + '</td>' +
+        '<td>' + esc(r.ip) + '</td>' +
+        '<td style="color:var(--mut)">' + esc(r.location) + '</td></tr>').join('') +
+      '</tbody></table></div>'
+    : '<div class="empty" style="margin:16px 0">No devices.</div>';
+  document.getElementById('listOv').classList.add('show');
+}
+function showCamList(filter){
+  const cams = (DATA && DATA.cameras && DATA.cameras.cameras) ? DATA.cameras.cameras : [];
+  let list = cams.slice();
+  if (filter === 'online') list = list.filter(c => c.online === true);
+  else if (filter === 'offline') list = list.filter(c => c.online === false);
+  const title = filter === 'online' ? 'Online Cameras (' + list.length + ')'
+              : filter === 'offline' ? 'Offline Cameras (' + list.length + ')'
+              : 'All Cameras (' + list.length + ')';
+  document.getElementById('listTitle').textContent = title;
+  document.getElementById('listBody').innerHTML = list.length
+    ? '<div class="scroll"><table><thead><tr><th>NVR</th><th>Ch</th><th>Camera Name</th><th>IP Address</th><th>Model</th><th>Status</th></tr></thead><tbody>' +
+      list.map(c => '<tr><td>' + esc(c.nvr) + '</td><td>' + esc(c.ch) + '</td><td>' + esc(c.name) + '</td><td>' + esc(c.ip) + '</td>' +
+        '<td style="color:var(--mut)">' + esc(c.model) + '</td>' +
+        '<td><span class="dot ' + (c.online === true ? 'up' : 'down') + '"></span>' + (c.online === true ? 'Online' : (c.online === false ? 'Offline' : 'Unknown')) + '</td></tr>').join('') +
+      '</tbody></table></div>'
+    : '<div class="empty" style="margin:16px 0">No cameras.</div>';
+  document.getElementById('listOv').classList.add('show');
+}
+function closeList(){ document.getElementById('listOv').classList.remove('show'); }
+
+// ---- live clock (dd/mm/yyyy hh:mm:ss) ----
+function tick(){
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  const el = document.getElementById('clock');
+  if (el) el.textContent = p(d.getDate()) + '/' + p(d.getMonth()+1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+tick(); setInterval(tick, 1000);
 
 async function load(){
   try {
