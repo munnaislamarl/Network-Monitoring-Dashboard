@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const snmp = require('snmp-native');
+const gsheets = require('./lib/gsheets');
 
 const COMMUNITY = process.env.SNMP_COMMUNITY || 'arlzabbix';
 const PORT = 161;
@@ -41,12 +42,32 @@ try {
 } catch (e) {}
 if (!Array.isArray(AUTH.users) || !AUTH.users.length) AUTH = { users: [{ username: 'admin', password: 'admin123', displayName: 'Admin', role: 'admin' }] };
 
-function saveAuth() { try { fs.writeFileSync(AUTH_FILE, JSON.stringify(AUTH, null, 2)); } catch (e) {} }
+function saveAuth() { try { fs.writeFileSync(AUTH_FILE, JSON.stringify(AUTH, null, 2)); } catch (e) {} pushUsersToSheet(); }
 function findUser(username) { return AUTH.users.find(u => u.username.toLowerCase() === String(username || '').toLowerCase()) || null; }
 function publicUser(u) { return { username: u.username, displayName: u.displayName || u.username, role: u.role || 'user' }; }
 function adminCount() { return AUTH.users.filter(u => (u.role || 'user') === 'admin').length; }
 function invalidateUserSessions(username) {
   for (const [tok, s] of sessions) if (s.username === username) sessions.delete(tok);
+}
+
+// ----- Google Sheets store (optional; used when SHEET_ID + GOOGLE_SERVICE_ACCOUNT are set) -----
+async function loadSheetConfig() {
+  if (!gsheets.enabled()) return false;
+  try {
+    const devs = gsheets.devicesFromRows(await gsheets.readTab('Devices'));
+    if (devs.length) { routers = devs; console.log('[gsheets] loaded ' + devs.length + ' devices'); }
+    const users = gsheets.usersFromRows(await gsheets.readTab('Users'));
+    if (users.length) { AUTH = { users }; console.log('[gsheets] loaded ' + users.length + ' users'); }
+    return true;
+  } catch (e) { console.warn('[gsheets] load failed: ' + e.message); return false; }
+}
+function pushUsersToSheet() {
+  if (!gsheets.enabled()) return;
+  gsheets.replaceTab('Users', gsheets.usersToRows(AUTH.users)).catch(e => console.warn('[gsheets] push users: ' + e.message));
+}
+function pushDevicesToSheet() {
+  if (!gsheets.enabled()) return;
+  gsheets.replaceTab('Devices', gsheets.devicesToRows(routers)).catch(e => console.warn('[gsheets] push devices: ' + e.message));
 }
 
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
@@ -230,18 +251,22 @@ function fmtBytes(n) {
   return n.toFixed(0) + ' B';
 }
 
-const state = routers.map(r => ({
-  id: r.id, name: r.name, isp: r.isp, location: r.location, ip: r.ip,
-  type: r.type || 'snmp',
-  vendor: 'unknown',
-  snmpPort: r.snmpPort || null,
-  nvr: r.nvr || null,
-  online: false, version: null, model: null, upText: null, upSeconds: 0,
-  lastSeen: 0, error: null, latency: null,
-  cpu: null, memTotal: null, memFree: null, totalRx: 0, totalTx: 0,
-  interfaces: [],
-  hist: [], prev: {}, _camCache: null
-}));
+let state = [];
+function buildState() {
+  state = routers.map(r => ({
+    id: r.id, name: r.name, isp: r.isp, location: r.location, ip: r.ip,
+    type: r.type || 'snmp',
+    vendor: 'unknown',
+    snmpPort: r.snmpPort || null,
+    nvr: r.nvr || null,
+    online: false, version: null, model: null, upText: null, upSeconds: 0,
+    lastSeen: 0, error: null, latency: null,
+    cpu: null, memTotal: null, memFree: null, totalRx: 0, totalTx: 0,
+    interfaces: [],
+    hist: [], prev: {}, _camCache: null
+  }));
+}
+buildState();
 
 async function pingHost(rs, timeoutMs) {
   return new Promise((resolve) => {
@@ -1086,6 +1111,7 @@ function addDevice(d) {
   if (state.some(s => s.ip === ip)) throw new Error('IP already exists');
   routers.push(rec);
   try { fs.writeFileSync(path.join(__dirname, 'routers.json'), JSON.stringify(routers, null, 2)); } catch (e) {}
+  pushDevicesToSheet();
   state.push({
     id: rec.id, name: rec.name, isp: rec.isp, location: rec.location, ip: rec.ip,
     type: rec.type || 'snmp', vendor: 'unknown',
@@ -1104,10 +1130,12 @@ function removeDevice(id) {
   const ri = routers.findIndex(r => r.id === id);
   if (ri >= 0) routers.splice(ri, 1);
   try { fs.writeFileSync(path.join(__dirname, 'routers.json'), JSON.stringify(routers, null, 2)); } catch (e) {}
+  pushDevicesToSheet();
 }
 
 (async () => {
   console.log('Collecting initial interface data...');
+  try { await loadSheetConfig(); buildState(); } catch (e) { console.warn('[gsheets] config load skipped: ' + (e && e.message)); }
   try { await pollAll(); } catch (e) { console.error('pollAll error', e); }
   serialize();
   console.log('Dashboard ready at http://localhost:' + PORT_HTTP);

@@ -54,6 +54,8 @@ jobs:
       - name: Poll devices and write snapshot
         env:
           SNMP_COMMUNITY: ${{ secrets.SNMP_COMMUNITY }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           PORT: "8080"
           HISTORY_FILE: ${{ github.workspace }}/history-data/history.json
         run: |
