@@ -84,6 +84,23 @@ node dashboard.js
 | `type` | `"ping"` দিলে ping-check, নাহলে SNMP |
 | `nvr` | (শুধু NVR) `{ brand, port, user, pass }` |
 
+## ফ্রি 24/7 মনিটরিং — GitHub Actions + Pages (PC লাগবে না)
+
+GitHub-এর সার্ভার প্রতি ৫ মিনিটে আপনার ডিভাইস poll করে GitHub Pages-এ একটা static dashboard দেখায় — কোনো server/PC চালু রাখতে হয় না।
+
+**একবারের সেটআপ (রিপো Settings-এ):**
+
+1. রিপো **Public** করুন — *Settings → General → Danger Zone → Change visibility*।
+2. *Settings → Pages → Build and deployment → Source =* **GitHub Actions**।
+3. *Settings → Secrets and variables → Actions → New repository secret*:
+   - `ROUTERS_JSON` → আপনার ডিভাইস লিস্ট (public IP), `routers.example.json` ফরম্যাটে
+   - (ঐচ্ছিক) `AUTH_JSON`, `SNMP_COMMUNITY`
+4. **Actions** ট্যাব → **Monitor & Deploy** → **Run workflow** (একবার) — এরপর নিজে থেকেই চলবে।
+
+তারপর dashboard: `https://<username>.github.io/<repo>/`
+
+> ⚠️ ফ্রি Pages-এর জন্য রিপো Public থাকতে হয়, তাই ডেটাও public। ডিভাইসের IP সিক্রেটে রাখুন (রিপোতে নয়)।
+
 ## 24/7 সার্ভারে চালানো / Deploy 24/7
 
 আপনার PC বন্ধ থাকলেও monitoring চালু রাখতে একটা always-on cloud **VPS**-এ চালান (Docker)। ধাপে ধাপে গাইড: **[DEPLOY.md](DEPLOY.md)**।

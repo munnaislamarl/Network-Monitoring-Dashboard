@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Network Monitoring Dashboard</title>
+<style>
+  :root{--bg:#0f1420;--card:#1a2233;--line:#2a3547;--txt:#e6edf7;--mut:#8fa1bd;--ok:#2ecc71;--off:#e74c3c;--warn:#f39c12;--acc:#4a8fe0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);font-family:'Segoe UI',system-ui,Arial,sans-serif;padding:18px}
+  a{color:var(--acc);text-decoration:none}
+  .bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:16px}
+  .bar h1{font-size:18px;font-weight:700}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok);display:inline-block;animation:p 1.6s infinite}
+  @keyframes p{0%,100%{opacity:1}50%{opacity:.35}}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+  .chip{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:6px 13px;font-size:13px;color:var(--mut)}
+  .chip b{color:var(--txt)}
+  .chip.on b{color:var(--ok)} .chip.off b{color:var(--off)} .chip.cam b{color:var(--acc)}
+  .cathead{display:flex;align-items:center;justify-content:space-between;margin:22px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+  .cathead h2{font-size:16px;font-weight:600;color:var(--acc)}
+  .cathead .c{font-size:12px;color:var(--mut)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .card.off{opacity:.7}
+  .row1{display:flex;align-items:center;gap:8px}
+  .st{width:10px;height:10px;border-radius:50%;flex:none}
+  .st.on{background:var(--ok);box-shadow:0 0 6px var(--ok)} .st.off{background:var(--off);box-shadow:0 0 6px var(--off)}
+  .name{font-size:14px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stat{margin-left:auto;font-size:10px;font-weight:700;padding:3px 8px;border-radius:6px}
+  .stat.on{background:rgba(46,204,113,.15);color:var(--ok)} .stat.off{background:rgba(231,76,60,.15);color:var(--off)}
+  .sub{font-size:11px;color:var(--mut);margin-top:4px}
+  .sub.mono{font-family:Consolas,monospace}
+  .metrics{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+  .m{flex:1;min-width:80px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  .m .l{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+  .m .v{font-size:15px;font-weight:700;margin-top:3px}
+  .mini{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}
+  .mini i{display:block;height:100%;background:var(--acc)}
+  .foot{margin-top:22px;text-align:center;font-size:12px;color:var(--mut)}
+  .empty{color:var(--mut);font-size:13px;padding:10px 0}
+</style>
+</head>
+<body>
+  <div class="bar">
+    <span class="dot"></span>
+    <h1>Network Monitoring Dashboard</h1>
+    <span id="updated" class="sub" style="margin:0">loading…</span>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div id="main"><div class="empty">Loading data…</div></div>
+  <div class="foot">Auto-refreshes every 60s · data via GitHub Actions · <span id="gen"></span></div>
+
+<script>
+const esc = s => String(s == null ? '--' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function pct(used, total){ if(!total) return null; return Math.max(0, Math.min(100, Math.round((used/total)*100))); }
+
+function deviceCard(d){
+  const on = !!d.online;
+  const ramPct = pct((d.memTotal||0)-(d.memFree||0), d.memTotal||0);
+  let metrics = '';
+  if (d.cpu != null || ramPct != null){
+    metrics += '<div class="metrics">';
+    if (d.cpu != null) metrics += '<div class="m"><div class="l">CPU</div><div class="v">'+d.cpu+'%</div><div class="mini"><i style="width:'+d.cpu+'%"></i></div></div>';
+    if (ramPct != null) metrics += '<div class="m"><div class="l">RAM</div><div class="v">'+ramPct+'%</div><div class="mini"><i style="width:'+ramPct+'%"></i></div></div>';
+    metrics += '</div>';
+  }
+  const meta = esc(d.isp) + (d.location ? ' · ' + esc(d.location) : '') + (d.latency != null ? ' · ' + d.latency + ' ms' : '');
+  return '<div class="card '+(on?'':'off')+'">'+
+    '<div class="row1"><span class="st '+(on?'on':'off')+'"></span><span class="name" title="'+esc(d.name)+'">'+esc(d.name)+'</span>'+
+      '<span class="stat '+(on?'on':'off')+'">'+(on?'ONLINE':'OFFLINE')+'</span></div>'+
+    '<div class="sub">'+meta+'</div>'+
+    '<div class="sub mono">'+esc(d.ip)+(d.model?(' · '+esc(d.model)):'')+'</div>'+
+    metrics+
+  '</div>';
+}
+
+function render(p){
+  const devices = p.devices || [];
+  const cams = p.cameras;
+  const on = devices.filter(d=>d.online).length;
+  const camOn = cams ? cams.online : 0, camTot = cams ? cams.total : 0;
+
+  document.getElementById('chips').innerHTML =
+    '<span class="chip">Devices <b>'+devices.length+'</b></span>'+
+    '<span class="chip on">Online <b>'+on+'</b></span>'+
+    '<span class="chip off">Offline <b>'+(devices.length-on)+'</b></span>'+
+    (cams ? '<span class="chip cam">Cameras <b>'+camOn+'/'+camTot+'</b></span>' : '');
+
+  // group devices
+  const groups = {};
+  for (const d of devices){ const g = d.isp || 'Devices'; (groups[g] = groups[g] || []).push(d); }
+  let html = '';
+  const keys = Object.keys(groups).sort();
+  for (const g of keys){
+    const list = groups[g];
+    const onN = list.filter(d=>d.online).length;
+    html += '<div class="cathead"><h2>'+esc(g)+'</h2><div class="c">'+onN+'/'+list.length+' online</div></div>';
+    html += '<div class="grid">'+list.map(deviceCard).join('')+'</div>';
+  }
+  if (!devices.length) html = '<div class="empty">No devices yet. Add ROUTERS_JSON secret and run the Monitor workflow.</div>';
+
+  // NVR cameras summary
+  if (cams && cams.cameras && cams.cameras.length){
+    const byNvr = {};
+    for (const c of cams.cameras){ const k = c.nvr || 'NVR'; (byNvr[k]=byNvr[k]||[]).push(c); }
+    html += '<div class="cathead"><h2>NVR Cameras</h2><div class="c">'+cams.online+'/'+cams.total+' online</div></div>';
+    html += '<div class="grid">';
+    for (const k of Object.keys(byNvr).sort()){
+      const l = byNvr[k], onN = l.filter(c=>c.online===true).length, off = l.length-onN;
+      html += '<div class="card"><div class="row1"><span class="st '+(off?'off':'on')+'"></span>'+
+        '<span class="name">'+esc(k)+'</span><span class="stat '+(off?'off':'on')+'">'+onN+'/'+l.length+'</span></div>'+
+        '<div class="sub">'+off+' offline camera'+(off===1?'':'s')+'</div></div>';
+    }
+    html += '</div>';
+  }
+
+  document.getElementById('main').innerHTML = html;
+  document.getElementById('updated').textContent = 'Updated ' + new Date(p.generated||Date.now()).toLocaleString();
+  document.getElementById('gen').textContent = 'snapshot ' + new Date(p.generated||Date.now()).toLocaleString();
+}
+
+async function load(){
+  try {
+    const r = await fetch('data.json?_=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    render(await r.json());
+  } catch(e){
+    document.getElementById('main').innerHTML = '<div class="empty">Could not load data.json ('+esc(e.message)+'). The Monitor workflow may not have run yet.</div>';
+  }
+}
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>
