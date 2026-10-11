@@ -14,8 +14,8 @@
  * Admin work (user/request manage) সেই session দিয়ে হয় — secret token ফাঁস হয় না।
  */
 
-var TOKEN = 'PASTE-YOUR-TOKEN-HERE';          // GitHub secret SHEETS_TOKEN এর সমান
-var ADD_TOKEN = 'PASTE-ADD-ONLY-TOKEN-HERE';   // public site-এর limited token
+var TOKEN = 'AELNOCLTXCgMZ8ARzt975NlsbyIOEeVFHmDWxu'; // full token (app/CI ব্যবহার করে)
+var ADD_TOKEN = 'AELADDFWkyHt203zTJs7NbxDdOlKGp';     // add-only token (site ব্যবহার করে)
 var SESSION_TTL_MS = 12 * 60 * 60 * 1000;      // session ১২ ঘণ্টা বৈধ
 
 var REQ_HEADER = ['ts', 'username', 'displayName', 'password', 'note', 'status'];
@@ -75,13 +75,13 @@ function handle_(e, p) {
       case 'getDevices':    return json_({ ok: true, values: readAll_('Devices') });
       case 'getUsers':      return json_({ ok: true, values: readAll_('Users') });
       case 'getCams':       return json_({ ok: true, values: readAll_('Cams') });
-      case 'setCams':       return json_({ ok: true, count: replaceRows_('Cams', p.values || []) });
       case 'getState':      return json_({ ok: true, values: readAll_('State') });
       case 'getHistory':    return json_({ ok: true, values: readHistory_(p.since) });
       case 'appendHistory': return json_({ ok: true, added: appendRows_('History', p.values || []) });
       case 'setState':      return json_({ ok: true, count: replaceRows_('State', p.values || []) });
       case 'setUsers':      return json_({ ok: true, count: replaceRows_('Users', p.values || []) });
       case 'setDevices':    return json_({ ok: true, count: replaceRows_('Devices', p.values || []) });
+      case 'setCams':       return json_({ ok: true, count: replaceRows_('Cams', p.values || []) });
       case 'setup':         return json_({ ok: true, result: setupNocDashboard() });
       default:              return json_({ ok: false, error: 'unknown action: ' + action });
     }
