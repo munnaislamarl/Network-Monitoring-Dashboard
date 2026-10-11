@@ -413,3 +413,13 @@ function setupNocDashboard() {
   });
   return 'tabs ready (Devices, Users, History, State, Requests, Cams)';
 }
+
+/** একবারের admin seed — Apps Script এ Select → Run করুন, তারপর মুছে দিতে পারেন */
+function makeFirstAdmin() {
+  var sh = sheet_('Users');
+  if (sh.getLastRow() === 0) {
+    sh.getRange(1, 1, 1, 4).setValues([['username', 'password', 'displayName', 'role']]).setFontWeight('bold');
+  }
+  sh.appendRow(['admin@company.com', 'Admin@1432', 'Admin', 'admin']);
+  return 'admin created: admin@company.com';
+}
