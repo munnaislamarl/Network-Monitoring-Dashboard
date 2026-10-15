@@ -1,6 +1,6 @@
 /* =========================================================
-   Login page — particle network background + form logic
-   (Sign in + Request access via Google Apps Script backend)
+   Network Operation Center — login page logic
+   (particle network background + sign in + request access)
    Plain vanilla JS (no libraries).
    ========================================================= */
 (function () {
@@ -21,7 +21,6 @@
   let running = false;
 
   const rand = () => Math.random();
-  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -33,9 +32,9 @@
     cv.style.height = h + "px";
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    pts = [];
+    pts = pts.filter((p) => p.life !== Infinity);
     ripples = [];
-    const base = clamp(Math.round((w * h) / 9375), 64, 208);
+    const base = Math.max(64, Math.min(208, Math.round((w * h) / 9375)));
     for (let i = 0; i < base; i++) {
       const ang = rand() * Math.PI * 2;
       const spd = (0.35 + rand() * 0.75) * 0.168;
@@ -54,10 +53,9 @@
     ripples.push({ x: x, y: y, r: 4 });
     if (ripples.length > 14) ripples.shift();
 
-    const n = 12;
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < 12; i++) {
       if (pts.length > MAXP) break;
-      const a = (2 * Math.PI * i) / n + rand() * 0.5;
+      const a = (2 * Math.PI * i) / 12 + rand() * 0.5;
       const sp = 2.5 + rand() * 4.5;
       const off = rand() * 12;
       pts.push({
@@ -98,9 +96,8 @@
       if (p.life === Infinity) {
         const bv = Math.hypot(p.vx, p.vy);
         if (bv > 1.4) {
-          const s = 1.4 / bv;
-          p.vx *= s;
-          p.vy *= s;
+          p.vx *= 1.4 / bv;
+          p.vy *= 1.4 / bv;
         }
       } else {
         p.life -= 0.0005;
@@ -134,6 +131,7 @@
       ctx.fill();
     }
 
+    ctx.lineWidth = 2;
     for (let i = ripples.length - 1; i >= 0; i--) {
       const rp = ripples[i];
       rp.r += 3.0;
@@ -141,14 +139,15 @@
         ripples.splice(i, 1);
         continue;
       }
+      ctx.strokeStyle = "rgba(180,200,255," + (0.6 * (1 - rp.r / 160)).toFixed(3) + ")";
       ctx.beginPath();
       ctx.arc(rp.x, rp.y, rp.r, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(180,200,255," + (0.6 * (1 - rp.r / 160)).toFixed(3) + ")";
-      ctx.lineWidth = 2;
       ctx.stroke();
     }
 
     ctx.lineWidth = 1;
+    const halfW = w * 0.5;
+    const halfH = h * 0.5;
     for (let i = 0; i < pts.length; i++) {
       const a = pts[i];
       const lf1 = a.life === Infinity ? 1 : a.life;
@@ -156,7 +155,7 @@
         const b = pts[j];
         const dx = a.x - b.x;
         const dy = a.y - b.y;
-        if (Math.abs(dx) > w * 0.5 || Math.abs(dy) > h * 0.5) continue;
+        if (Math.abs(dx) > halfW || Math.abs(dy) > halfH) continue;
         const d = Math.hypot(dx, dy);
         if (d < 135) {
           const lf2 = b.life === Infinity ? 1 : b.life;
@@ -224,7 +223,8 @@
   window.addEventListener("touchend", () => { mouse.on = false; });
 
   document.addEventListener("click", (e) => {
-    if (e.target.closest && e.target.closest(".card")) return;
+    if (e.target.closest && e.target.closest(".login-card")) return;
+    if (e.target.closest && e.target.closest(".dialog")) return;
     spawnClick(e.clientX, e.clientY);
   });
 
@@ -239,41 +239,6 @@
 
   resize();
   start();
-
-  /* ---------------------------------------------------------
-     TAB SWITCHING  (Sign In ⇄ Request Access)
-     --------------------------------------------------------- */
-  window.switchTab = function (name) {
-    const signinTab = document.getElementById("tabSignin");
-    const reqTab = document.getElementById("tabRequest");
-    const signinForm = document.getElementById("login-form");
-    const reqForm = document.getElementById("request-form");
-    if (name === "request") {
-      signinTab.classList.remove("active");
-      reqTab.classList.add("active");
-      signinForm.classList.remove("show");
-      reqForm.classList.add("show");
-    } else {
-      reqTab.classList.remove("active");
-      signinTab.classList.add("active");
-      reqForm.classList.remove("show");
-      signinForm.classList.add("show");
-    }
-  };
-
-  /* ---------------------------------------------------------
-     PASSWORD VISIBILITY TOGGLE (sign in)
-     --------------------------------------------------------- */
-  const pw = document.getElementById("password");
-  const eye = document.getElementById("eye");
-
-  eye.addEventListener("click", () => {
-    const toText = pw.type === "password";
-    pw.type = toText ? "text" : "password";
-    eye.classList.toggle("showing", toText);
-    eye.setAttribute("aria-pressed", String(toText));
-    eye.setAttribute("aria-label", toText ? "Hide password" : "Show password");
-  });
 
   /* ---------------------------------------------------------
      APPS SCRIPT BACKEND
@@ -300,6 +265,23 @@
   try {
     if (localStorage.getItem(SESSION_KEY)) window.location.replace("../");
   } catch (e) {}
+
+  /* ---------------------------------------------------------
+     PASSWORD VISIBILITY TOGGLE
+     --------------------------------------------------------- */
+  const pw = document.getElementById("password");
+  const eye = document.getElementById("eye");
+  const eyeOpen = document.getElementById("eyeOpen");
+  const eyeOff = document.getElementById("eyeOff");
+
+  eye.addEventListener("click", () => {
+    const show = pw.type === "password";
+    pw.type = show ? "text" : "password";
+    eyeOpen.style.display = show ? "none" : "block";
+    eyeOff.style.display = show ? "block" : "none";
+    eye.setAttribute("aria-pressed", String(show));
+    eye.setAttribute("aria-label", show ? "Hide password" : "Show password");
+  });
 
   /* ---------------------------------------------------------
      SIGN IN
@@ -343,15 +325,35 @@
   });
 
   /* ---------------------------------------------------------
-     REQUEST ACCESS
+     REQUEST ACCESS (dialog)
      --------------------------------------------------------- */
+  const overlay = document.getElementById("reqOverlay");
+  const requestBtn = document.getElementById("requestBtn");
+  const rqCancel = document.getElementById("rqCancel");
   const reqForm = document.getElementById("request-form");
   const rqErr = document.getElementById("rqError");
   const rqBtn = document.getElementById("rqSubmit");
 
+  function openRequest() {
+    overlay.style.display = "flex";
+  }
+  function closeRequest() {
+    overlay.style.display = "none";
+    rqErr.textContent = "";
+    rqErr.classList.remove("success");
+    ["rqUsername", "rqDisplay", "rqPassword", "rqConfirm", "rqNote"].forEach((id) => {
+      const el = document.getElementById(id); if (el) el.value = "";
+    });
+  }
+
+  requestBtn.addEventListener("click", openRequest);
+  rqCancel.addEventListener("click", closeRequest);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) closeRequest(); });
+
   reqForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     rqErr.textContent = "";
+    rqErr.classList.remove("success");
 
     const username = document.getElementById("rqUsername").value.trim();
     const displayName = document.getElementById("rqDisplay").value.trim();
@@ -373,21 +375,18 @@
       if (j && j.ok) {
         rqErr.classList.add("success");
         rqErr.textContent = "Request sent! Admin অনুমোদনের পর এই username দিয়ে login করতে পারবেন।";
-        ["rqUsername", "rqDisplay", "rqPassword", "rqConfirm", "rqNote"].forEach((id) => {
-          const el = document.getElementById(id); if (el) el.value = "";
-        });
         rqBtn.disabled = false;
-        rqBtn.textContent = "Send Request";
-        setTimeout(() => { rqErr.classList.remove("success"); switchTab("signin"); }, 5000);
+        rqBtn.textContent = "Send request";
+        setTimeout(closeRequest, 1800);
       } else {
         rqErr.textContent = (j && j.error) || "Request failed. Please try again.";
         rqBtn.disabled = false;
-        rqBtn.textContent = "Send Request";
+        rqBtn.textContent = "Send request";
       }
     } catch (e) {
       rqErr.textContent = "Unable to reach the server. Please try again.";
       rqBtn.disabled = false;
-      rqBtn.textContent = "Send Request";
+      rqBtn.textContent = "Send request";
     }
   });
 })();

@@ -9,126 +9,116 @@
   <link rel="icon" href="../assets/akij-essential-logo.jpg" type="image/jpeg" />
 </head>
 <body>
-  <div class="screen">
-    <div class="orb"></div>
-    <canvas id="fx"></canvas>
+  <div class="login-root">
+    <div class="login-orb" aria-hidden="true"></div>
+    <canvas class="login-fx" id="fx" aria-hidden="true"></canvas>
 
-    <div class="wrap">
-      <div class="card">
-        <div class="topbar"></div>
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="login-top"></div>
 
-        <div class="tabs">
-          <button type="button" class="tab active" id="tabSignin" onclick="switchTab('signin')">Sign In</button>
-          <button type="button" class="tab" id="tabRequest" onclick="switchTab('request')">Request Access</button>
-        </div>
-
-        <form id="login-form" class="form show" novalidate>
-          <div class="logo" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <form class="login-form" id="login-form" novalidate>
+          <div class="login-logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <path d="M3 6h18"></path>
               <path d="M16 10a4 4 0 0 1-8 0"></path>
             </svg>
           </div>
 
-          <div class="head">
+          <div class="login-head">
             <h1>Network Operation Center</h1>
             <p>Sign in to your account</p>
           </div>
 
-          <div class="field">
-            <label for="username">Username</label>
-            <input id="username" name="username" type="text" placeholder="Enter your username"
-                   autocomplete="username" required />
+          <div class="login-field">
+            <label class="login-label" for="username">Username</label>
+            <input id="username" name="username" class="login-input" type="text"
+                   placeholder="Username" autocomplete="username" autocapitalize="none" spellcheck="false" />
           </div>
 
-          <div class="field">
-            <label for="password">Password</label>
-            <div class="pw">
-              <input id="password" name="password" type="password" placeholder="Enter your password"
-                     autocomplete="current-password" required />
-              <button id="eye" class="eye" type="button" aria-label="Show password" aria-pressed="false">
-                <svg class="eye-open" viewBox="0 0 24 24" width="20" height="20" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <div class="login-field">
+            <label class="login-label" for="password">Password</label>
+            <div class="login-pass">
+              <input id="password" name="password" class="login-input" type="password"
+                     placeholder="••••••••" autocomplete="current-password" />
+              <button type="button" id="eye" class="login-eye" aria-label="Show password" aria-pressed="false">
+                <svg id="eyeOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
-                <svg class="eye-off" viewBox="0 0 24 24" width="20" height="20" fill="none"
-                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
-                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
-                  <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+                <svg id="eyeOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
                   <line x1="1" y1="1" x2="23" y2="23"></line>
                 </svg>
               </button>
             </div>
           </div>
 
-          <p id="error" class="error" role="alert"></p>
+          <div class="login-error" id="error" role="alert" aria-live="polite"></div>
 
-          <button id="submit" class="btn" type="submit">Sign in</button>
+          <button class="login-btn" id="submit" type="submit">Sign in</button>
 
-          <p class="hint">Secured access — IT Infrastructure &amp; Security</p>
-        </form>
+          <button type="button" class="login-request" id="requestBtn">Request access</button>
 
-        <form id="request-form" class="form" novalidate>
-          <div class="logo" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <path d="M16 10a4 4 0 0 1-8 0"></path>
-            </svg>
-          </div>
-
-          <div class="head">
-            <h1>Request Access</h1>
-            <p>Send a request — an admin will approve it</p>
-          </div>
-
-          <div class="selectrow">
-            <div class="field">
-              <label for="rqUsername">Username</label>
-              <input id="rqUsername" type="text" placeholder="e.g. operator1"
-                     autocomplete="username" />
-            </div>
-            <div class="field">
-              <label for="rqDisplay">Display Name</label>
-              <input id="rqDisplay" type="text" placeholder="e.g. Main Gate Operator"
-                     autocomplete="name" />
-            </div>
-          </div>
-
-          <div class="selectrow">
-            <div class="field">
-              <label for="rqPassword">Password</label>
-              <input id="rqPassword" type="password" placeholder="Choose a password"
-                     autocomplete="new-password" />
-            </div>
-            <div class="field">
-              <label for="rqConfirm">Confirm Password</label>
-              <input id="rqConfirm" type="password" placeholder="Repeat password"
-                     autocomplete="new-password" />
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="rqNote">Note (optional)</label>
-            <textarea id="rqNote" placeholder="Department / reason, e.g. Security Team — Gate 3"></textarea>
-          </div>
-
-          <p id="rqError" class="error" role="alert"></p>
-
-          <button id="rqSubmit" class="btn" type="submit">Send Request</button>
-
-          <p class="hint">আপনার role হবে normal user। <br />Admin অনুমোদনের পরই login করতে পারবেন।</p>
+          <p class="login-hint">Secured access &mdash; IT Infrastructure &amp; Security</p>
         </form>
       </div>
 
-      <div class="foot">
-        © 2026 AKIJ Resource. All Rights Reserved.
-        <span>IT Infrastructure &amp; Security Team, IT Department.</span>
+      <p class="login-footer">
+        AKIJ Resource<br />
+        <span>&copy; 2026 AKIJ Resource. All Rights Reserved.</span>
+      </p>
+    </div>
+
+    <!-- Request access dialog -->
+    <div class="dialog-overlay" id="reqOverlay" style="display:none">
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="reqTitle">
+        <div class="dialog-head">
+          <h3 id="reqTitle">Request access</h3>
+          <p>Ask for a Network Operation Center account. An admin will review and approve your request.</p>
+        </div>
+
+        <form id="request-form" novalidate>
+          <div class="login-field">
+            <label class="login-label" for="rqUsername">Username</label>
+            <input id="rqUsername" class="login-input" type="text" placeholder="e.g. operator1"
+                   autocomplete="username" autocapitalize="none" spellcheck="false" />
+          </div>
+
+          <div class="login-field">
+            <label class="login-label" for="rqDisplay">Display Name</label>
+            <input id="rqDisplay" class="login-input" type="text" placeholder="e.g. Main Gate Operator"
+                   autocomplete="name" />
+          </div>
+
+          <div class="login-field">
+            <label class="login-label" for="rqPassword">Password</label>
+            <input id="rqPassword" class="login-input" type="password" placeholder="Choose a password"
+                   autocomplete="new-password" />
+          </div>
+
+          <div class="login-field">
+            <label class="login-label" for="rqConfirm">Confirm Password</label>
+            <input id="rqConfirm" class="login-input" type="password" placeholder="Repeat password"
+                   autocomplete="new-password" />
+          </div>
+
+          <div class="login-field">
+            <label class="login-label" for="rqNote">Note (optional)</label>
+            <textarea id="rqNote" class="login-input" rows="3" placeholder="Department / reason, e.g. Security Team — Gate 3"></textarea>
+          </div>
+
+          <p class="login-error" id="rqError" role="alert" aria-live="polite"></p>
+
+          <div class="dialog-actions">
+            <button type="button" class="login-btn ghost" id="rqCancel">Cancel</button>
+            <button type="submit" class="login-btn" id="rqSubmit">Send request</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
