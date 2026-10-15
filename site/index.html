@@ -393,6 +393,23 @@ function brandOf(r){
   if ((r.isp||'').toLowerCase().indexOf('switch') >= 0) return { label:'Switch', cls:'cb' };
   return null;
 }
+function typeLabel(r){
+  switch(String(r.type||'')){
+    case 'router': return 'Router (SNMP)';
+    case 'switch': return 'Network Switch';
+    case 'nvr': return 'NVR / CCTV';
+    case 'attendance': return 'Attendance / Ping';
+    case 'ping': return 'Attendance / Ping';
+    case 'other': return 'Other';
+    default: return r.type ? esc(r.type) : '--';
+  }
+}
+function brandLabel(r){
+  const b = brandOf(r);
+  if (b) return b.label;
+  if (r.vendor && r.vendor !== 'unknown' && r.vendor !== 'other') return esc(r.vendor);
+  return '--';
+}
 function vtagHtml(r){ const b = brandOf(r); return b ? '<span class="vtag '+b.cls+'">'+b.label+'</span>' : ''; }
 function ramPct(d){ if (!d.memTotal) return null; return Math.max(0, Math.min(100, Math.round(((d.memTotal - d.memFree) / d.memTotal) * 100))); }
 
@@ -588,13 +605,15 @@ function openDevView(d){
   let html = '<div class="nvrcard">' +
     '<div class="nvrhead-row"><span class="back" onclick="backHome()">&larr; Back to Dashboard</span><span class="nvrtitle">' + esc(d.name) + '</span><span class="nvronline' + (online ? '' : ' off') + '">' + (online ? 'ONLINE' : 'OFFLINE') + '</span></div>' +
     '<div class="infogrid">' +
+      infoItem('Device Type', typeLabel(d)) +
+      infoItem('Brand', brandLabel(d)) +
+      infoItem('Model', esc(d.model || '--')) +
       infoItem('IP Address', esc(d.ip)) +
       infoItem('ISP', esc(d.isp)) +
       infoItem('Location', esc(d.location)) +
       infoItem('Uptime', fmtUptime(d.upSeconds)) +
       infoItem('Version', esc(d.version || '--')) +
       infoItem('Total Traffic', 'RX ' + prettyBytes(d.totalRx) + ' &middot; TX ' + prettyBytes(d.totalTx)) +
-      '<div class="item" style="grid-column:1/-1"><div class="lbl">Model</div><div class="val">' + esc(d.model || '--') + '</div></div>' +
     '</div></div>';
   html += '<div class="camwrap" style="margin-bottom:16px"><div class="sectitle">Traffic History (per interface)</div>' +
     '<div class="histctl">' +
