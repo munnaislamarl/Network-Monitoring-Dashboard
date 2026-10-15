@@ -341,7 +341,7 @@
     overlay.style.display = "none";
     rqErr.textContent = "";
     rqErr.classList.remove("success");
-    ["rqUsername", "rqDisplay", "rqPassword", "rqConfirm", "rqNote"].forEach((id) => {
+    ["rqName", "rqEmail", "rqPassword", "rqNote"].forEach((id) => {
       const el = document.getElementById(id); if (el) el.value = "";
     });
   }
@@ -355,26 +355,25 @@
     rqErr.textContent = "";
     rqErr.classList.remove("success");
 
-    const username = document.getElementById("rqUsername").value.trim();
-    const displayName = document.getElementById("rqDisplay").value.trim();
+    const name = document.getElementById("rqName").value.trim();
+    const email = document.getElementById("rqEmail").value.trim();
     const password = document.getElementById("rqPassword").value;
-    const confirm = document.getElementById("rqConfirm").value;
     const note = document.getElementById("rqNote").value.trim();
 
-    if (!username || !password) { rqErr.textContent = "Username and password are required."; return; }
+    if (!name || !email || !password) { rqErr.textContent = "Full name, email and password are required."; return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { rqErr.textContent = "Please enter a valid email address."; return; }
     if (password.length < 4) { rqErr.textContent = "Password must be at least 4 characters."; return; }
-    if (password !== confirm) { rqErr.textContent = "Passwords do not match."; return; }
 
     rqBtn.disabled = true;
     rqBtn.textContent = "Sending…";
     try {
       const j = await callApp({
         action: "requestAccess",
-        data: { username: username, displayName: displayName, password: password, note: note }
+        data: { username: email, displayName: name, password: password, note: note }
       });
       if (j && j.ok) {
         rqErr.classList.add("success");
-        rqErr.textContent = "Request sent! Admin অনুমোদনের পর এই username দিয়ে login করতে পারবেন।";
+        rqErr.textContent = "Request sent! Admin অনুমোদনের পর এই email দিয়ে login করতে পারবেন।";
         rqBtn.disabled = false;
         rqBtn.textContent = "Send request";
         setTimeout(closeRequest, 1800);

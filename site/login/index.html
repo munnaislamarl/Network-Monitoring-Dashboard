@@ -84,15 +84,15 @@
 
         <form id="request-form" novalidate>
           <div class="login-field">
-            <label class="login-label" for="rqUsername">Username</label>
-            <input id="rqUsername" class="login-input" type="text" placeholder="e.g. operator1"
-                   autocomplete="username" autocapitalize="none" spellcheck="false" />
+            <label class="login-label" for="rqName">Full name</label>
+            <input id="rqName" class="login-input" type="text" placeholder="Md. Munna Islam"
+                   autocomplete="name" />
           </div>
 
           <div class="login-field">
-            <label class="login-label" for="rqDisplay">Display Name</label>
-            <input id="rqDisplay" class="login-input" type="text" placeholder="e.g. Main Gate Operator"
-                   autocomplete="name" />
+            <label class="login-label" for="rqEmail">Email</label>
+            <input id="rqEmail" class="login-input" type="email" placeholder="you@company.com"
+                   autocomplete="email" autocapitalize="none" spellcheck="false" />
           </div>
 
           <div class="login-field">
@@ -102,14 +102,8 @@
           </div>
 
           <div class="login-field">
-            <label class="login-label" for="rqConfirm">Confirm Password</label>
-            <input id="rqConfirm" class="login-input" type="password" placeholder="Repeat password"
-                   autocomplete="new-password" />
-          </div>
-
-          <div class="login-field">
-            <label class="login-label" for="rqNote">Note (optional)</label>
-            <textarea id="rqNote" class="login-input" rows="3" placeholder="Department / reason, e.g. Security Team — Gate 3"></textarea>
+            <label class="login-label" for="rqNote">Why do you need access?</label>
+            <textarea id="rqNote" class="login-input" rows="3" placeholder="e.g. Department, role, or reason for access"></textarea>
           </div>
 
           <p class="login-error" id="rqError" role="alert" aria-live="polite"></p>
