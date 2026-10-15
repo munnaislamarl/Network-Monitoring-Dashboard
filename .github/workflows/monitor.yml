@@ -6,6 +6,11 @@ name: Monitor & Deploy
 # All configuration lives in the Google Sheet (Devices / Users / Cams tabs),
 # read via SHEETS_API_URL + SHEETS_TOKEN. No config files are needed.
 on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/monitor.yml"
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch: {}
